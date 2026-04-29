@@ -15,12 +15,16 @@ const DISPLAY_HOST = '192.168.56.102';
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
-// 사용자가 올린 파일은 이름이 겹치지 않도록 시간값과 난수를 붙여 저장합니다.
+// Keep uploaded files recognizable, but add a unique suffix so same-name files do not overwrite each other.
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
   filename:    (req, file, cb) => {
+    const originalName = decodeUploadName(file.originalname);
+    const ext = path.extname(originalName);
+    const base = path.basename(originalName, ext);
+    const safeBase = sanitizeFileBaseName(base) || 'file';
     const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
+    cb(null, `${safeBase}__${unique}${ext}`);
   },
 });
 // 게시글은 최대 20개, 댓글은 각 API에서 최대 10개까지 받을 수 있게 multer 업로드 기능을 준비했습니다.
@@ -227,8 +231,8 @@ function saveFiles(postId, files) {
     'INSERT INTO files (post_id, filename, original_name, file_path, file_size) VALUES (?, ?, ?, ?, ?)'
   );
   files.forEach(f => {
-    // multer가 Latin-1로 잘못 읽은 파일명을 UTF-8로 복원
-    const originalName = Buffer.from(f.originalname, 'latin1').toString('utf8');
+    // Store the original display name separately because the saved disk name has a unique suffix.
+    const originalName = decodeUploadName(f.originalname);
     stmt.run(postId, f.filename, originalName, f.path, f.size);
   });
 }
@@ -240,9 +244,24 @@ function saveCommentFiles(commentId, files) {
     'INSERT INTO comment_files (comment_id, filename, original_name, file_path, file_size) VALUES (?, ?, ?, ?, ?)'
   );
   files.forEach(f => {
-    const originalName = Buffer.from(f.originalname, 'latin1').toString('utf8');
+    // Store the original display name separately because the saved disk name has a unique suffix.
+    const originalName = decodeUploadName(f.originalname);
     stmt.run(commentId, f.filename, originalName, f.path, f.size);
   });
+}
+
+// Restore Korean filenames that multer can receive as Latin-1 encoded text.
+function decodeUploadName(name) {
+  return Buffer.from(name, 'latin1').toString('utf8');
+}
+
+// Remove characters Windows cannot use in filenames and keep the saved name readable.
+function sanitizeFileBaseName(name) {
+  return name
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80);
 }
 
 // 수정 화면에서 삭제한 게시글 첨부파일을 실제 파일과 DB에서 함께 제거합니다.
