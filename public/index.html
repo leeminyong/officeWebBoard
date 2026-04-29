@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>게시판</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <h1 onclick="location.href='/'">📋 게시판</h1>
+</header>
+
+<aside class="side-menu" aria-label="주요 메뉴">
+  <a class="side-menu-item" data-board-link="project" href="/">프로젝트</a>
+  <a class="side-menu-item" data-board-link="maintenance" href="/?board=maintenance">유지보수</a>
+  <a class="side-menu-item" data-board-link="app-version" href="/?board=app-version">앱 버전관리</a>
+  <a class="side-menu-item" data-board-link="files" href="/?board=files">파일</a>
+</aside>
+
+<div class="container">
+  <div class="card">
+    <div class="toolbar">
+      <h2 id="totalInfo">전체 0건</h2>
+      <button class="btn btn-primary" id="writeBtn">✏️ 글쓰기</button>
+    </div>
+
+    <table class="post-table">
+      <thead>
+        <tr>
+          <th class="center" style="width:60px">번호</th>
+          <th>제목</th>
+          <th class="center" style="width:100px">작성자</th>
+          <th class="center" style="width:130px">작성일</th>
+          <th class="center" style="width:60px">파일</th>
+        </tr>
+      </thead>
+      <tbody id="postList"></tbody>
+    </table>
+
+    <div id="emptyState" class="empty-state" style="display:none">등록된 게시글이 없습니다.</div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+  const boardMeta = {
+    project: '프로젝트',
+    maintenance: '유지보수',
+    'app-version': '앱 버전관리',
+    files: '파일',
+  };
+  const params = new URLSearchParams(location.search);
+  const currentBoard = boardMeta[params.get('board')] ? params.get('board') : 'project';
+  let currentPage = 1;
+
+  document.querySelectorAll('[data-board-link]').forEach(link => {
+    link.classList.toggle('active', link.dataset.boardLink === currentBoard);
+  });
+  document.title = `${boardMeta[currentBoard]} 게시판`;
+  document.getElementById('writeBtn').onclick = () => {
+    location.href = `write.html${boardQuery()}`;
+  };
+
+  async function loadPosts(page) {
+    currentPage = page;
+    try {
+      const res  = await fetch(`/api/posts?page=${page}&board=${currentBoard}`);
+      const data = await res.json();
+      renderList(data.posts);
+      renderPagination(data.pagination);
+      document.getElementById('totalInfo').textContent = `${boardMeta[currentBoard]} 전체 ${data.pagination.total}건`;
+    } catch {
+      showToast('게시글을 불러오지 못했습니다.', true);
+    }
+  }
+
+  function renderList(posts) {
+    const tbody = document.getElementById('postList');
+    const empty = document.getElementById('emptyState');
+    if (posts.length === 0) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    tbody.innerHTML = posts.map((p, i) => {
+      const commentBadge = p.comment_count > 0
+        ? `<span class="badge-comment">${p.comment_count}</span>` : '';
+      const fileBadge = p.file_count > 0
+        ? `<span class="badge-file">📎${p.file_count}</span>` : '';
+      const date = p.created_at.slice(0, 10);
+
+      const commentsHtml = (p.comments && p.comments.length > 0)
+        ? p.comments.map(c => `
+            <a class="inline-comment" href="view.html?id=${p.id}&board=${currentBoard}">
+              <span class="inline-comment-author">${escHtml(c.author || '익명')}</span>
+              <span class="inline-comment-text">${escHtml(c.content)}</span>
+              <span class="inline-comment-date">${c.created_at.slice(0, 10)}</span>
+            </a>`).join('')
+        : '';
+
+      return `
+        <tr>
+          <td class="center text-muted">${p.row_num}</td>
+          <td>
+            <a class="post-title-link" href="view.html?id=${p.id}&board=${currentBoard}">${escHtml(p.title)}</a>
+            ${commentBadge}${fileBadge}
+            ${commentsHtml}
+          </td>
+          <td class="center text-muted">${escHtml(p.author)}</td>
+          <td class="center text-muted">${date}</td>
+          <td class="center text-muted">${p.file_count > 0 ? '📎' : ''}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  function renderPagination({ page, totalPages }) {
+    const wrap = document.getElementById('pagination');
+    if (totalPages <= 1) { wrap.innerHTML = ''; return; }
+
+    const groupSize = 5;
+    const groupStart = Math.floor((page - 1) / groupSize) * groupSize + 1;
+    const groupEnd   = Math.min(groupStart + groupSize - 1, totalPages);
+
+    let html = '';
+    html += `<button class="page-btn" onclick="loadPosts(1)" ${page===1?'disabled':''}>«</button>`;
+    html += `<button class="page-btn" onclick="loadPosts(${page-1})" ${page===1?'disabled':''}>‹</button>`;
+    for (let i = groupStart; i <= groupEnd; i++) {
+      html += `<button class="page-btn ${i===page?'active':''}" onclick="loadPosts(${i})">${i}</button>`;
+    }
+    html += `<button class="page-btn" onclick="loadPosts(${page+1})" ${page===totalPages?'disabled':''}>›</button>`;
+    html += `<button class="page-btn" onclick="loadPosts(${totalPages})" ${page===totalPages?'disabled':''}>»</button>`;
+    wrap.innerHTML = html;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function boardQuery() {
+    return currentBoard === 'project' ? '' : `?board=${currentBoard}`;
+  }
+
+  function showToast(msg, isError) {
+    const wrap = document.getElementById('toastWrap');
+    const t = document.createElement('div');
+    t.className = 'toast' + (isError ? ' error' : '');
+    t.textContent = msg;
+    wrap.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+
+  loadPosts(1);
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# Dependencies installed by npm.
+node_modules/
+
+# Uploaded user files are runtime data, not source code.
+uploads/
+
+# SQLite database contains local 게시글 data.
+board.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Server logs are generated while the app runs.
+*.log
+
+# macOS archive metadata from copied zip files.
+__MACOSX/
+.DS_Store
+
+# Private HTTPS certificate files must not be committed.
+certs/*.pfx
+certs/*.key
+certs/*.pem
+
+# Local environment overrides.
+.env
+.env.*

@@ -1,0 +1,15 @@
+{
+  "name": "bulletin-board",
+  "version": "1.0.0",
+  "description": "로컬 게시판",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "marked": "^18.0.2",
+    "multer": "^2.0.1",
+    "turndown": "^7.2.4"
+  }
+}
