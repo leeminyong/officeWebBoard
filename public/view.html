@@ -1,4 +1,8 @@
 <!DOCTYPE html>
+<!--
+  이 파일은 게시글 상세 화면입니다.
+  게시글 내용, 첨부파일, 댓글 목록과 댓글 작성 영역을 화면에 배치합니다.
+-->
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -10,7 +14,7 @@
 <body>
 
 <header class="site-header">
-  <h1 onclick="location.href='/'">📋 게시판</h1>
+  <h1 data-home-link>📋 게시판</h1>
 </header>
 
 <aside class="side-menu" aria-label="주요 메뉴">
@@ -21,7 +25,7 @@
 </aside>
 
 <div class="container">
-  <!-- 게시글 본문 -->
+  <!-- HTML 주석 문법: 이 설명은 화면에 보이지 않고, 게시글 본문 영역이라는 뜻을 알려주기 위해 적었습니다. -->
   <div class="card" id="postCard">
     <h2 id="postTitle" style="font-size:1.3rem;margin-bottom:12px"></h2>
     <div class="post-meta">
@@ -31,24 +35,23 @@
     </div>
     <div class="post-content md-body" id="postContent"></div>
 
-    <!-- 첨부파일 -->
+    <!-- HTML 주석 문법: 첨부파일 목록은 JavaScript 모듈(viewPage.js)이 서버 데이터를 받아 채워 넣습니다. -->
     <div class="attach-section" id="attachSection" style="display:none">
       <h4>📎 첨부파일</h4>
       <ul class="file-list" id="fileList"></ul>
       <div class="img-preview-grid" id="imgPreviewGrid"></div>
     </div>
 
-    <!-- 하단 버튼 -->
     <div class="action-bar" style="margin-top:24px">
       <button class="btn btn-secondary" id="listBtn">← 목록으로</button>
       <div class="right">
-        <button class="btn btn-primary btn-sm" id="editBtn" onclick="goEdit()">✏️ 수정</button>
-        <button class="btn btn-danger btn-sm"  id="delBtn"  onclick="deletePost()">🗑️ 삭제</button>
+        <button class="btn btn-primary btn-sm" id="editBtn">✏️ 수정</button>
+        <button class="btn btn-danger btn-sm" id="delBtn">🗑️ 삭제</button>
       </div>
     </div>
   </div>
 
-  <!-- 댓글 -->
+  <!-- HTML 주석 문법: 댓글 입력과 댓글 목록은 viewPage.js에서 기능별로 처리하도록 분리했습니다. -->
   <div class="card">
     <div class="comment-section">
       <h3>💬 댓글 <span id="commentCount" style="color:#aaa;font-weight:400"></span></h3>
@@ -59,14 +62,13 @@
           <input class="form-control author-input" id="cmtAuthor" placeholder="이름 (선택)" maxlength="30">
           <textarea class="form-control" id="cmtContent" placeholder="댓글을 입력하세요" rows="2" style="flex:1;resize:none" maxlength="1000"></textarea>
         </div>
-        <!-- 댓글 파일 첨부 -->
-        <div class="file-drop-zone" id="cmtDropZone" onclick="document.getElementById('cmtFileInput').click()" style="padding:12px;font-size:.85rem">
+        <div class="file-drop-zone" id="cmtDropZone" style="padding:12px;font-size:.85rem">
           <input type="file" id="cmtFileInput" multiple>
           📎 파일 첨부 (클릭 또는 드래그)
         </div>
         <div class="selected-files" id="cmtSelectedFiles"></div>
         <div class="img-preview-grid" id="cmtImgPreview"></div>
-        <button class="btn btn-primary btn-sm" style="align-self:flex-end" onclick="submitComment()">댓글 등록</button>
+        <button class="btn btn-primary btn-sm" id="submitCommentBtn" style="align-self:flex-end">댓글 등록</button>
       </div>
     </div>
   </div>
@@ -74,309 +76,7 @@
 
 <div class="toast-wrap" id="toastWrap"></div>
 
-<script>
-  const boardMeta = {
-    project: '프로젝트',
-    maintenance: '유지보수',
-    'app-version': '앱 버전관리',
-    files: '파일',
-  };
-  const params = new URLSearchParams(location.search);
-  const postId = params.get('id');
-  let currentBoard = boardMeta[params.get('board')] ? params.get('board') : 'project';
-  if (!postId) location.href = boardUrl(currentBoard);
-
-  let postData = null;
-  let cmtFiles = [];
-
-  updateBoardUi();
-  document.getElementById('listBtn').onclick = () => {
-    location.href = boardUrl(currentBoard);
-  };
-
-  // 상세 화면을 그리기 위해 게시글, 댓글, 첨부파일을 서버에서 한 번에 가져옵니다.
-  async function loadPost() {
-    try {
-      const res = await fetch(`/api/posts/${postId}`);
-      if (!res.ok) { showToast('게시글을 찾을 수 없습니다.', true); return; }
-      postData = await res.json();
-      renderPost(postData);
-      renderComments(postData.comments);
-    } catch {
-      showToast('불러오기 실패', true);
-    }
-  }
-
-  // 가져온 게시글 내용을 화면에 넣고, 첨부파일은 이미지와 일반 파일로 나누어 보여줍니다.
-  function renderPost(p) {
-    if (boardMeta[p.board]) {
-      currentBoard = p.board;
-      updateBoardUi();
-    }
-    document.title = `${p.title} - ${boardMeta[currentBoard]} 게시판`;
-    document.getElementById('postTitle').textContent   = p.title;
-    document.getElementById('postAuthor').textContent  = p.author;
-    document.getElementById('postDate').textContent    = p.created_at.slice(0, 16);
-    document.getElementById('postContent').innerHTML = marked.parse(p.content);
-
-    if (p.created_at !== p.updated_at)
-      document.getElementById('updatedBadge').style.display = 'inline';
-
-    // 첨부파일
-    if (p.files && p.files.length > 0) {
-      const section = document.getElementById('attachSection');
-      section.style.display = 'block';
-      const fileList   = document.getElementById('fileList');
-      const imgGrid    = document.getElementById('imgPreviewGrid');
-      const imageExts  = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i;
-
-      p.files.forEach(f => {
-        const isImg = imageExts.test(f.original_name);
-        const sizeStr = formatSize(f.file_size);
-
-        if (isImg) {
-          const div = document.createElement('div');
-          div.className = 'img-preview-item';
-          div.style.width = '140px';
-          div.style.height = '140px';
-          div.title = f.original_name;
-          div.innerHTML = `
-            <img src="/uploads/${escHtml(f.filename)}" alt="${escHtml(f.original_name)}" loading="lazy" style="cursor:pointer" onclick="downloadFile(${f.id}, '${escHtml(f.original_name)}')">
-            <button class="remove-img" onclick="deletePostFile(${f.id}, this)" title="삭제">✕</button>`;
-          imgGrid.appendChild(div);
-        } else {
-          const li = document.createElement('li');
-          li.className = 'file-item';
-          li.innerHTML = `
-            <span class="file-icon">📄</span>
-            <span class="file-name" onclick="downloadFile(${f.id}, '${escHtml(f.original_name)}')">${escHtml(f.original_name)}</span>
-            <span class="file-size">${sizeStr}</span>
-            <button class="delete-file-btn" onclick="deletePostFile(${f.id}, this)" title="삭제">✕</button>`;
-          fileList.appendChild(li);
-        }
-      });
-    }
-  }
-
-  // 댓글 목록을 화면에 만들고, 댓글에 붙은 파일도 함께 표시합니다.
-  function renderComments(comments) {
-    const list = document.getElementById('commentList');
-    document.getElementById('commentCount').textContent = `(${comments.length})`;
-    if (comments.length === 0) {
-      list.innerHTML = '<div style="color:#bbb;font-size:.88rem;padding:8px 0">첫 댓글을 작성해보세요.</div>';
-      return;
-    }
-    list.innerHTML = '';
-    comments.forEach(c => {
-      const div = document.createElement('div');
-      div.className = 'comment-item';
-      div.dataset.id = c.id;
-
-      // 첨부파일 HTML 생성
-      let filesHtml = '';
-      if (c.files && c.files.length > 0) {
-        const imageExts = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i;
-        const fileItems = c.files.map(f => {
-          if (imageExts.test(f.original_name)) {
-            return `<div class="img-preview-item" style="width:80px;height:80px" title="${escHtml(f.original_name)}">
-                      <img src="/uploads/${escHtml(f.filename)}" alt="${escHtml(f.original_name)}" loading="lazy" style="cursor:pointer" onclick="downloadCmtFile(${f.id},'${escHtml(f.original_name)}')">
-                      <button class="remove-img" onclick="deleteCmtFile(${f.id}, this)" title="삭제">✕</button>
-                    </div>`;
-          }
-          return `<div class="file-item" style="margin-top:4px" id="cf-${f.id}">
-                    <span class="file-icon">📄</span>
-                    <span class="file-name" onclick="downloadCmtFile(${f.id},'${escHtml(f.original_name)}')">${escHtml(f.original_name)}</span>
-                    <span class="file-size">${formatSize(f.file_size)}</span>
-                    <button class="delete-file-btn" onclick="deleteCmtFile(${f.id}, this)" title="삭제">✕</button>
-                  </div>`;
-        }).join('');
-        filesHtml = `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">${fileItems}</div>`;
-      }
-
-      div.innerHTML = `
-        <div class="comment-header">
-          <span class="comment-author">${escHtml(c.author)}</span>
-          <span>
-            <span class="comment-date">${c.created_at.slice(0,16)}</span>
-            <button class="comment-del" onclick="deleteComment(${c.id})">삭제</button>
-          </span>
-        </div>
-        <div class="comment-text md-body"></div>
-        ${filesHtml}`;
-      // 댓글 내용은 innerHTML로 직접 삽입 (XSS 방지를 위해 marked로만 처리)
-      div.querySelector('.comment-text').innerHTML = marked.parse(c.content);
-      list.appendChild(div);
-    });
-  }
-
-  // 댓글 등록 버튼을 누르면 댓글 내용과 선택한 파일을 FormData로 서버에 보냅니다.
-  async function submitComment() {
-    const author  = document.getElementById('cmtAuthor').value.trim();
-    const content = document.getElementById('cmtContent').value.trim();
-    if (!content) { showToast('댓글 내용을 입력하세요.', true); return; }
-
-    const fd = new FormData();
-    fd.append('author', author);
-    fd.append('content', content);
-    cmtFiles.forEach(f => fd.append('files', f));
-
-    const res = await fetch(`/api/posts/${postId}/comments`, { method: 'POST', body: fd });
-    if (res.ok) {
-      document.getElementById('cmtContent').value = '';
-      cmtFiles = [];
-      renderCmtSelectedFiles();
-      await loadPost();
-      showToast('댓글이 등록되었습니다.');
-    } else {
-      showToast('등록 실패', true);
-    }
-  }
-
-  // ── 댓글 파일 선택 ──
-  document.getElementById('cmtFileInput').addEventListener('change', e => {
-    addCmtFiles([...e.target.files]);
-    e.target.value = '';
-  });
-
-  const cmtDrop = document.getElementById('cmtDropZone');
-  cmtDrop.addEventListener('dragover', e => { e.preventDefault(); cmtDrop.classList.add('drag-over'); });
-  cmtDrop.addEventListener('dragleave', () => cmtDrop.classList.remove('drag-over'));
-  cmtDrop.addEventListener('drop', e => {
-    e.preventDefault();
-    cmtDrop.classList.remove('drag-over');
-    addCmtFiles([...e.dataTransfer.files]);
-  });
-
-  // 같은 파일이 중복으로 들어가지 않게 확인한 뒤 댓글 첨부 목록에 추가합니다.
-  function addCmtFiles(files) {
-    files.forEach(f => {
-      if (!cmtFiles.find(x => x.name === f.name && x.size === f.size)) cmtFiles.push(f);
-    });
-    renderCmtSelectedFiles();
-  }
-
-  // 댓글 작성 전에 선택한 파일들을 미리보기와 파일명 목록으로 보여줍니다.
-  function renderCmtSelectedFiles() {
-    const wrap = document.getElementById('cmtSelectedFiles');
-    const grid = document.getElementById('cmtImgPreview');
-    wrap.innerHTML = '';
-    grid.innerHTML = '';
-    cmtFiles.forEach((file, idx) => {
-      if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(file.name)) {
-        const div = document.createElement('div');
-        div.className = 'img-preview-item';
-        const btn = document.createElement('button');
-        btn.className = 'remove-img';
-        btn.textContent = '✕';
-        btn.onclick = () => { cmtFiles.splice(idx, 1); renderCmtSelectedFiles(); };
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(file);
-        img.onload = () => URL.revokeObjectURL(img.src);
-        div.appendChild(img);
-        div.appendChild(btn);
-        grid.appendChild(div);
-      } else {
-        const item = document.createElement('div');
-        item.className = 'selected-file-item';
-        item.innerHTML = `<span>📄</span><span>${escHtml(file.name)}</span>
-          <span class="file-size" style="color:#aaa;font-size:.8rem;margin-left:4px">${formatSize(file.size)}</span>
-          <button class="remove-btn" title="제거">✕</button>`;
-        item.querySelector('.remove-btn').onclick = () => { cmtFiles.splice(idx, 1); renderCmtSelectedFiles(); };
-        wrap.appendChild(item);
-      }
-    });
-  }
-
-  // 댓글 첨부파일을 클릭하면 서버의 다운로드 API로 내려받습니다.
-  function downloadCmtFile(fileId, name) {
-    const a = document.createElement('a');
-    a.href = `/api/comment-files/${fileId}/download`;
-    a.download = name;
-    a.click();
-  }
-
-  // 댓글 첨부파일 삭제 버튼을 누르면 서버에서 파일을 지우고 화면에서도 제거합니다.
-  async function deleteCmtFile(fileId, btn) {
-    if (!confirm('이 파일을 삭제하시겠습니까?')) return;
-    const res = await fetch(`/api/comment-files/${fileId}`, { method: 'DELETE' });
-    if (res.ok) {
-      // 해당 파일 요소만 제거 (페이지 전체 재로드 없이)
-      const el = btn.closest('.img-preview-item, .file-item');
-      if (el) el.remove();
-      showToast('파일이 삭제되었습니다.');
-    } else {
-      showToast('삭제 실패', true);
-    }
-  }
-
-  // 댓글 삭제 버튼을 누르면 서버에서 댓글과 댓글 첨부파일을 함께 삭제합니다.
-  async function deleteComment(cid) {
-    if (!confirm('댓글을 삭제하시겠습니까?')) return;
-    const res = await fetch(`/api/posts/${postId}/comments/${cid}`, { method: 'DELETE' });
-    if (res.ok) { await loadPost(); showToast('댓글이 삭제되었습니다.'); }
-    else showToast('삭제 실패', true);
-  }
-
-  async function deletePost() {
-    if (!confirm('게시글을 삭제하시겠습니까?')) return;
-    const res = await fetch(`/api/posts/${postId}`, { method: 'DELETE' });
-    if (res.ok) { showToast('삭제되었습니다.'); setTimeout(() => location.href = boardUrl(currentBoard), 800); }
-    else showToast('삭제 실패', true);
-  }
-
-  // 수정 버튼을 누르면 글 번호를 붙여 작성 화면을 수정 모드로 엽니다.
-  function goEdit() { location.href = `write.html?id=${postId}&board=${currentBoard}`; }
-
-  // 게시글 첨부파일을 클릭하면 서버의 다운로드 API로 내려받습니다.
-  function downloadFile(fileId, name) {
-    const a = document.createElement('a');
-    a.href = `/api/files/${fileId}/download`;
-    a.download = name;
-    a.click();
-  }
-
-  // 게시글 첨부파일 삭제 버튼을 누르면 서버에서 파일을 지우고 화면에서도 제거합니다.
-  async function deletePostFile(fileId, btn) {
-    if (!confirm('이 파일을 삭제하시겠습니까?')) return;
-    const res = await fetch(`/api/files/${fileId}`, { method: 'DELETE' });
-    if (res.ok) {
-      const el = btn.closest('.img-preview-item, .file-item');
-      if (el) el.remove();
-      showToast('파일이 삭제되었습니다.');
-    } else {
-      showToast('삭제 실패', true);
-    }
-  }
-
-  function formatSize(bytes) {
-    if (bytes < 1024)       return bytes + ' B';
-    if (bytes < 1024*1024)  return (bytes/1024).toFixed(1) + ' KB';
-    return (bytes/1024/1024).toFixed(1) + ' MB';
-  }
-
-  function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-  }
-  function boardUrl(board) {
-    return board === 'project' ? '/' : `/?board=${board}`;
-  }
-  function updateBoardUi() {
-    document.querySelectorAll('[data-board-link]').forEach(link => {
-      link.classList.toggle('active', link.dataset.boardLink === currentBoard);
-    });
-  }
-
-  function showToast(msg, isError) {
-    const wrap = document.getElementById('toastWrap');
-    const t = document.createElement('div');
-    t.className = 'toast' + (isError ? ' error' : '');
-    t.textContent = msg;
-    wrap.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
-  }
-
-  loadPost();
-</script>
+<!-- HTML 주석 문법: type="module"은 JavaScript 파일을 모듈 방식으로 불러오겠다는 뜻입니다. -->
+<script type="module" src="js/viewPage.js"></script>
 </body>
 </html>

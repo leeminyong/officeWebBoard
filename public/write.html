@@ -1,4 +1,8 @@
 <!DOCTYPE html>
+<!--
+  이 파일은 글쓰기와 글수정 화면입니다.
+  제목, 작성자, 내용, 첨부파일 입력칸을 화면에 배치합니다.
+-->
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -11,13 +15,14 @@
 <body>
 
 <header class="site-header">
-  <h1 onclick="location.href='/'">📋 게시판</h1>
+  <h1 data-home-link>📋 게시판</h1>
 </header>
 
 <div class="container">
   <div class="card">
     <h2 id="pageTitle" style="font-size:1.1rem;margin-bottom:20px;color:#555">✏️ 새 글 작성</h2>
 
+    <!-- HTML 주석 문법: 작성자 입력칸입니다. 실제 저장 동작은 js/writePage.js에서 처리합니다. -->
     <div class="form-group">
       <label for="author">작성자</label>
       <input class="form-control" id="author" placeholder="이름 (미입력 시 익명)" maxlength="30" style="max-width:200px">
@@ -33,18 +38,16 @@
       <textarea class="form-control" id="content" placeholder="내용을 입력하세요" style="min-height:300px;resize:vertical;font-family:inherit;font-size:.95rem;line-height:1.6"></textarea>
     </div>
 
-    <!-- 파일 첨부 -->
+    <!-- HTML 주석 문법: 파일 첨부 화면만 HTML에 두고, 선택/삭제 로직은 js/writePage.js로 분리했습니다. -->
     <div class="form-group">
       <label>파일 첨부 <span style="color:#aaa;font-weight:400;font-size:.82rem">(최대 20개, 파일당 50MB)</span></label>
 
-      <!-- 기존 첨부파일 (수정 모드) -->
       <div id="existingFiles" style="display:none;margin-bottom:10px">
         <div style="font-size:.82rem;color:#777;margin-bottom:6px">기존 첨부파일</div>
         <ul class="file-list" id="existingFileList"></ul>
       </div>
 
-      <!-- 새 파일 드래그&드롭 -->
-      <div class="file-drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div class="file-drop-zone" id="dropZone">
         <input type="file" id="fileInput" multiple>
         📁 클릭하거나 파일을 여기로 드래그하세요
       </div>
@@ -53,214 +56,15 @@
     </div>
 
     <div class="action-bar">
-      <button class="btn btn-secondary" onclick="history.back()">취소</button>
-      <button class="btn btn-primary" id="submitBtn" onclick="submit()">등록</button>
+      <button class="btn btn-secondary" id="cancelBtn">취소</button>
+      <button class="btn btn-primary" id="submitBtn">등록</button>
     </div>
   </div>
 </div>
 
 <div class="toast-wrap" id="toastWrap"></div>
 
-0<script>
-  const params  = new URLSearchParams(location.search);
-  const editId  = params.get('id');
-  const isEdit  = !!editId;
-  const boardMeta = {
-    project: '프로젝트',
-    maintenance: '유지보수',
-    'app-version': '앱 버전관리',
-    files: '파일',
-  };
-  let currentBoard = boardMeta[params.get('board')] ? params.get('board') : 'project';
-
-  let selectedFiles    = [];
-  let deleteFileIds    = [];
-  let existingFilesMap = {};
-
-  // 주소에 글 번호가 있으면 새 글 작성이 아니라 기존 글 수정 화면으로 바꿉니다.
-  if (isEdit) {
-    document.title = '글 수정 - 게시판';
-    document.getElementById('pageTitle').textContent = '✏️ 글 수정';
-    document.getElementById('submitBtn').textContent = '수정 완료';
-    loadPost();
-  }
-
-  // 수정할 글의 기존 제목, 내용, 첨부파일을 불러와 입력칸에 채웁니다.
-  async function loadPost() {
-    const res  = await fetch(`/api/posts/${editId}`);
-    const post = await res.json();
-    if (boardMeta[post.board]) currentBoard = post.board;
-    document.getElementById('author').value  = post.author;
-    document.getElementById('title').value   = post.title;
-    document.getElementById('content').value = post.content;
-    updatePreview();
-
-    if (post.files && post.files.length > 0) {
-      const section = document.getElementById('existingFiles');
-      section.style.display = 'block';
-      const list = document.getElementById('existingFileList');
-      post.files.forEach(f => {
-        existingFilesMap[f.id] = f;
-        const li = document.createElement('li');
-        li.className = 'file-item';
-        li.id = `ef-${f.id}`;
-        li.innerHTML = `
-          <span class="file-icon">${isImage(f.original_name) ? '🖼️' : '📄'}</span>
-          <span class="file-name">${escHtml(f.original_name)}</span>
-          <span class="file-size">${formatSize(f.file_size)}</span>
-          <button class="delete-file-btn" onclick="markDeleteFile(${f.id})" title="삭제">✕</button>`;
-        list.appendChild(li);
-      });
-    }
-  }
-
-  // 기존 첨부파일은 바로 지우지 않고, 저장할 때 삭제하도록 표시만 해둡니다.
-  function markDeleteFile(fileId) {
-    if (!confirm('이 파일을 삭제하시겠습니까?')) return;
-    deleteFileIds.push(fileId);
-    const el = document.getElementById(`ef-${fileId}`);
-    if (el) { el.style.opacity = '.4'; el.style.textDecoration = 'line-through'; el.querySelector('button').disabled = true; }
-  }
-
-  // ── 파일 선택 ──
-  document.getElementById('fileInput').addEventListener('change', e => addFiles([...e.target.files]));
-
-  const dropZone = document.getElementById('dropZone');
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    addFiles([...e.dataTransfer.files]);
-  });
-
-  // 같은 파일이 중복으로 들어가지 않게 확인한 뒤 새 첨부 목록에 추가합니다.
-  function addFiles(files) {
-    files.forEach(file => {
-      if (selectedFiles.find(f => f.name === file.name && f.size === file.size)) return;
-      selectedFiles.push(file);
-    });
-    renderSelectedFiles();
-    document.getElementById('fileInput').value = '';
-  }
-
-  // 새로 선택한 첨부파일을 이미지 미리보기와 파일명 목록으로 보여줍니다.
-  function renderSelectedFiles() {
-    const wrap = document.getElementById('selectedFiles');
-    const grid = document.getElementById('imgPreviewGrid');
-    wrap.innerHTML = '';
-    grid.innerHTML = '';
-
-    selectedFiles.forEach((file, idx) => {
-      if (isImage(file.name)) {
-        const div = document.createElement('div');
-        div.className = 'img-preview-item';
-        const btn = document.createElement('button');
-        btn.className = 'remove-img';
-        btn.textContent = '✕';
-        btn.onclick = () => { selectedFiles.splice(idx, 1); renderSelectedFiles(); };
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(file);
-        img.onload = () => URL.revokeObjectURL(img.src);
-        div.appendChild(img);
-        div.appendChild(btn);
-        grid.appendChild(div);
-      } else {
-        const item = document.createElement('div');
-        item.className = 'selected-file-item';
-        item.innerHTML = `
-          <span>📄</span>
-          <span>${escHtml(file.name)}</span>
-          <span class="file-size" style="color:#aaa;font-size:.8rem;margin-left:4px">${formatSize(file.size)}</span>
-          <button class="remove-btn" title="제거">✕</button>`;
-        item.querySelector('.remove-btn').onclick = () => { selectedFiles.splice(idx, 1); renderSelectedFiles(); };
-        wrap.appendChild(item);
-      }
-    });
-  }
-
-  // ── 제출 ──
-  // 등록/수정 버튼을 누르면 글 내용, 새 첨부파일, 삭제할 기존 파일 목록을 서버에 보냅니다.
-  async function submit() {
-    const author  = document.getElementById('author').value.trim();
-    const title   = document.getElementById('title').value.trim();
-    const content = document.getElementById('content').value.trim();
-
-    if (!title)   { showToast('제목을 입력해주세요.', true); return; }
-    if (!content) { showToast('내용을 입력해주세요.', true); return; }
-
-    const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
-    btn.textContent = '처리 중...';
-
-    const fd = new FormData();
-    fd.append('author',  author);
-    fd.append('title',   title);
-    fd.append('content', content);
-    fd.append('board',   currentBoard);
-    selectedFiles.forEach(f => fd.append('files', f));
-    if (isEdit && deleteFileIds.length > 0) fd.append('deleteFileIds', JSON.stringify(deleteFileIds));
-
-    try {
-      // 수정 모드는 PUT, 새 글 작성은 POST를 사용해서 서버가 작업을 구분하게 합니다.
-      const url    = isEdit ? `/api/posts/${editId}` : '/api/posts';
-      const method = isEdit ? 'PUT' : 'POST';
-      const res    = await fetch(url, { method, body: fd });
-      const data   = await res.json();
-
-      if (res.ok) {
-        showToast(isEdit ? '수정되었습니다.' : '등록되었습니다.');
-        setTimeout(() => location.href = `view.html?id=${isEdit ? editId : data.id}&board=${currentBoard}`, 600);
-      } else {
-        showToast(data.error || '오류가 발생했습니다.', true);
-        btn.disabled = false;
-        btn.textContent = isEdit ? '수정 완료' : '등록';
-      }
-    } catch {
-      showToast('서버 오류가 발생했습니다.', true);
-      btn.disabled = false;
-      btn.textContent = isEdit ? '수정 완료' : '등록';
-    }
-  }
-
-  // HTML로 복사된 내용을 붙여넣을 때 마크다운으로 자동 변환
-  const td = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
-  document.getElementById('content').addEventListener('paste', (e) => {
-    const html = e.clipboardData.getData('text/html');
-    if (!html) return; // 일반 텍스트는 그대로 붙여넣기
-    e.preventDefault();
-    const markdown = td.turndown(html);
-    const el = e.target;
-    const start = el.selectionStart;
-    const before = el.value.slice(0, start);
-    const after  = el.value.slice(el.selectionEnd);
-    el.value = before + markdown + after;
-    el.selectionStart = el.selectionEnd = start + markdown.length;
-    updatePreview();
-  });
-
-  const contentEl = document.getElementById('content');
-  function updatePreview() {}
-  const _origLoadPost = typeof loadPost === 'function' ? loadPost : null;
-
-  function isImage(name) { return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(name); }
-  function formatSize(b) {
-    if (b < 1024) return b + ' B';
-    if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
-    return (b/1024/1024).toFixed(1) + ' MB';
-  }
-  function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-  }
-  function showToast(msg, isError) {
-    const wrap = document.getElementById('toastWrap');
-    const t = document.createElement('div');
-    t.className = 'toast' + (isError ? ' error' : '');
-    t.textContent = msg;
-    wrap.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
-  }
-</script>
+<!-- HTML 주석 문법: type="module"로 불러오면 writePage.js가 import/export 방식으로 다른 JS 파일을 사용할 수 있습니다. -->
+<script type="module" src="js/writePage.js"></script>
 </body>
 </html>

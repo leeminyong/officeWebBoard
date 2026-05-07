@@ -1,3 +1,8 @@
+/**
+ * 이 파일은 게시판 전체 화면의 디자인을 담당합니다.
+ * 글자 크기, 버튼 색상, 표 모양, 댓글 입력칸 크기처럼 눈에 보이는 스타일을 정합니다.
+ */
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
