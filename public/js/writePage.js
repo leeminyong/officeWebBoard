@@ -1,19 +1,20 @@
 /**
  * 이 파일은 글쓰기와 글수정 화면을 담당합니다.
- * 제목/내용 저장, 파일 첨부, 기존 첨부파일 삭제 표시, HTML 붙여넣기 변환을 처리합니다.
+ * 제목/내용 저장, 파일 첨부, 캡쳐 이미지 붙여넣기, 기존 첨부파일 삭제 표시, HTML 붙여넣기 변환을 처리합니다.
  */
 import { boardMeta, setupHomeLink } from './board.js';
 import { createPost, fetchPost, updatePost } from './api.js';
 import { escHtml, formatSize, isImage, showToast } from './utils.js';
 
 // JavaScript 주석 문법: 이 파일은 글쓰기 화면(write.html)의 동작만 담당하는 모듈입니다.
-// 새 글 등록, 기존 글 수정, 파일 선택, HTML 붙여넣기 변환 기능을 HTML에서 분리했습니다.
+// 새 글 등록, 기존 글 수정, 파일 선택, 캡쳐 이미지 붙여넣기, HTML 붙여넣기 변환 기능을 HTML에서 분리했습니다.
 const params = new URLSearchParams(location.search);
 const editId = params.get('id');
 const isEdit = Boolean(editId);
 let currentBoard = boardMeta[params.get('board')] ? params.get('board') : 'project';
 let selectedFiles = [];
 let deleteFileIds = [];
+const inlineImageNames = new Set();
 
 setupHomeLink();
 bindEvents();
@@ -44,7 +45,7 @@ function bindEvents() {
     if (button) markDeleteFile(button.dataset.deleteFileId);
   });
 
-  document.getElementById('content').addEventListener('paste', handlePasteAsMarkdown);
+  document.getElementById('contentEditor').addEventListener('paste', handleContentPaste);
 }
 
 // 주소에 글 번호가 있으면 새 글 작성이 아니라 기존 글 수정 화면으로 바꿉니다.
@@ -67,7 +68,7 @@ async function loadPostForEdit() {
   if (boardMeta[post.board]) currentBoard = post.board;
   document.getElementById('author').value = post.author;
   document.getElementById('title').value = post.title;
-  document.getElementById('content').value = post.content;
+  setEditorFromSavedContent(post.content, post.files || []);
   renderExistingFiles(post.files || []);
 }
 
@@ -121,6 +122,8 @@ function renderSelectedFiles() {
   grid.innerHTML = '';
 
   selectedFiles.forEach((file, index) => {
+    if (inlineImageNames.has(file.name)) return;
+
     if (isImage(file.name)) {
       const div = document.createElement('div');
       div.className = 'img-preview-item';
@@ -151,6 +154,7 @@ function renderSelectedFiles() {
 
 // 아직 서버에 올리지 않은 새 첨부파일을 선택 목록에서 제거합니다.
 function removeSelectedFile(index) {
+  inlineImageNames.delete(selectedFiles[index]?.name);
   selectedFiles.splice(index, 1);
   renderSelectedFiles();
 }
@@ -159,7 +163,8 @@ function removeSelectedFile(index) {
 async function submitPost() {
   const author = document.getElementById('author').value.trim();
   const title = document.getElementById('title').value.trim();
-  const content = document.getElementById('content').value.trim();
+  const content = getEditorMarkdown().trim();
+  document.getElementById('content').value = content;
 
   if (!title) {
     showToast('제목을 입력해주세요.', true);
@@ -205,18 +210,112 @@ function resetSubmitButton(button) {
   button.textContent = isEdit ? '수정 완료' : '등록';
 }
 
-// HTML로 복사된 내용을 붙여넣을 때 마크다운으로 자동 변환합니다.
-function handlePasteAsMarkdown(event) {
+// 편집 영역에 붙여넣을 때 캡쳐 이미지는 글 안에 바로 보이게 넣고, HTML 글은 보기 좋은 형태로 붙여넣습니다.
+function handleContentPaste(event) {
+  const imageFiles = getClipboardImageFiles(event);
+  if (imageFiles.length > 0) {
+    event.preventDefault();
+    addInlineImageFiles(imageFiles);
+    imageFiles.forEach(file => insertInlineImage(file));
+    showToast('캡쳐 이미지를 내용란에 추가했습니다.');
+    return;
+  }
+
   const html = event.clipboardData.getData('text/html');
   if (!html) return;
 
   event.preventDefault();
+  document.execCommand('insertHTML', false, html);
+}
+
+// 캡쳐 이미지는 서버에 저장할 첨부파일 목록에는 넣되, 첨부파일란 미리보기에는 보이지 않도록 이름을 따로 기억합니다.
+function addInlineImageFiles(files) {
+  files.forEach(file => inlineImageNames.add(file.name));
+  addFiles(files);
+}
+
+// 내용 편집 영역의 현재 커서 위치에 이미지 태그를 바로 넣습니다. 사용자는 붙여넣는 즉시 이미지를 볼 수 있습니다.
+function insertInlineImage(file) {
+  const image = document.createElement('img');
+  image.src = URL.createObjectURL(file);
+  image.alt = '캡쳐 이미지';
+  image.dataset.attachmentName = file.name;
+  image.onload = () => URL.revokeObjectURL(image.src);
+  insertNodeAtCursor(image);
+  insertNodeAtCursor(document.createElement('br'));
+}
+
+// contenteditable 편집 영역은 textarea가 아니므로, 브라우저 선택 영역에 직접 노드를 끼워 넣습니다.
+function insertNodeAtCursor(node) {
+  const editor = document.getElementById('contentEditor');
+  editor.focus();
+  const selection = window.getSelection();
+  if (!selection.rangeCount) {
+    editor.appendChild(node);
+    return;
+  }
+  const range = selection.getRangeAt(0);
+  range.deleteContents();
+  range.insertNode(node);
+  range.setStartAfter(node);
+  range.setEndAfter(node);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+// 클립보드 안에서 이미지 파일만 골라냅니다. 캡쳐 도구로 복사한 이미지는 보통 image/png 형태로 들어옵니다.
+function getClipboardImageFiles(event) {
+  const items = [...event.clipboardData.items];
+  return items
+    .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+    .map(item => createClipboardImageFile(item.getAsFile(), item.type))
+    .filter(Boolean);
+}
+
+// 클립보드 이미지는 파일명이 비어 있는 경우가 많아서, 저장하기 쉬운 이름을 새로 붙입니다.
+function createClipboardImageFile(file, mimeType) {
+  if (!file) return null;
+  const extension = fileExtensionFromMime(mimeType);
+  const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '-');
+  return new File([file], `clipboard-image-${timestamp}.${extension}`, {
+    type: mimeType || file.type || 'image/png',
+    lastModified: Date.now(),
+  });
+}
+
+// 이미지 종류에 맞춰 파일 확장자를 정합니다. 모르는 형식이면 가장 흔한 png로 저장합니다.
+function fileExtensionFromMime(mimeType) {
+  const extensionMap = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+    'image/bmp': 'bmp',
+    'image/svg+xml': 'svg',
+  };
+  return extensionMap[mimeType] || 'png';
+}
+
+// 저장된 마크다운 글을 편집 영역에 다시 보여줍니다. attachment: 이미지는 실제 업로드 주소로 바꿔서 보이게 합니다.
+function setEditorFromSavedContent(content, files) {
+  const editor = document.getElementById('contentEditor');
+  let visibleContent = content;
+  files.filter(file => isImage(file.original_name)).forEach(file => {
+    visibleContent = visibleContent.split(`attachment:${file.original_name}`).join(`/uploads/${file.filename}`);
+    visibleContent = visibleContent
+      .split(`[캡쳐 이미지 첨부: ${file.original_name}]`)
+      .join(`![캡쳐 이미지](/uploads/${file.filename})`);
+  });
+  editor.innerHTML = window.marked.parse(visibleContent);
+  document.getElementById('content').value = content;
+}
+
+// 편집 영역의 HTML을 서버에 저장할 마크다운으로 바꿉니다. 붙여넣은 이미지는 attachment:파일명 형태로 저장합니다.
+function getEditorMarkdown() {
+  const editorClone = document.getElementById('contentEditor').cloneNode(true);
+  editorClone.querySelectorAll('img[data-attachment-name]').forEach(image => {
+    image.setAttribute('src', `attachment:${image.dataset.attachmentName}`);
+  });
   const turndown = new window.TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
-  const markdown = turndown.turndown(html);
-  const input = event.target;
-  const start = input.selectionStart;
-  const before = input.value.slice(0, start);
-  const after = input.value.slice(input.selectionEnd);
-  input.value = before + markdown + after;
-  input.selectionStart = input.selectionEnd = start + markdown.length;
+  return turndown.turndown(editorClone.innerHTML);
 }

@@ -326,6 +326,26 @@ a { color: inherit; text-decoration: none; }
 }
 .form-control:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 3px #e8f0fe; }
 textarea.form-control { resize: vertical; min-height: 200px; }
+/* CSS 주석 문법: content-editor는 글쓰기의 내용 입력 영역입니다. textarea와 달리 이미지도 바로 보여줄 수 있습니다. */
+.content-editor {
+  min-height: 300px;
+  overflow-y: auto;
+  line-height: 1.6;
+  cursor: text;
+}
+/* 내용이 비어 있을 때 안내 문구를 보여줍니다. 실제 저장되는 글자는 아니고 화면 안내용입니다. */
+.content-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #9aa0a6;
+}
+/* 붙여넣은 캡쳐 이미지가 내용란 안에서 너무 크게 튀어나오지 않도록 가로폭을 제한합니다. */
+.content-editor img {
+  display: block;
+  max-width: 100%;
+  max-height: 520px;
+  margin: 8px 0;
+  border-radius: 6px;
+}
 
 /* ── 파일 업로드 영역 ── */
 .file-drop-zone {

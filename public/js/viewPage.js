@@ -1,6 +1,6 @@
 /**
  * 이 파일은 게시글 상세 화면을 담당합니다.
- * 게시글 내용, 첨부파일, 댓글 목록, 댓글 작성과 삭제 기능을 처리합니다.
+ * 게시글 내용, 본문 안 이미지 표시, 첨부파일, 댓글 목록, 댓글 작성과 삭제 기능을 처리합니다.
  */
 import { boardMeta, boardUrl, setupHomeLink, updateBoardLinks } from './board.js';
 import {
@@ -14,7 +14,7 @@ import {
 import { downloadFromUrl, escHtml, formatSize, isImage, showToast } from './utils.js';
 
 // JavaScript 주석 문법: 이 파일은 상세 화면(view.html)의 동작만 담당합니다.
-// 게시글 보기, 댓글 작성, 첨부파일 다운로드/삭제 기능을 HTML에서 분리했습니다.
+// 게시글 보기, 본문 안 이미지 표시, 댓글 작성, 첨부파일 다운로드/삭제 기능을 HTML에서 분리했습니다.
 const params = new URLSearchParams(location.search);
 const postId = params.get('id');
 let currentBoard = boardMeta[params.get('board')] ? params.get('board') : 'project';
@@ -86,14 +86,27 @@ function renderPost(post) {
   document.getElementById('postTitle').textContent = post.title;
   document.getElementById('postAuthor').textContent = post.author;
   document.getElementById('postDate').textContent = post.created_at.slice(0, 16);
-  document.getElementById('postContent').innerHTML = window.marked.parse(post.content);
+  document.getElementById('postContent').innerHTML = window.marked.parse(replaceAttachmentImageMarkers(post.content, post.files || []));
   document.getElementById('updatedBadge').style.display = post.created_at !== post.updated_at ? 'inline' : 'none';
 
-  renderPostFiles(post.files || []);
+  renderPostFiles(post.files || [], post.content);
+}
+
+// 본문 안의 attachment:파일명 표시를 실제 업로드 이미지 주소로 바꿉니다. 캡쳐 이미지를 내용란에 붙여넣은 것처럼 보이게 하려는 처리입니다.
+function replaceAttachmentImageMarkers(content, files) {
+  let renderedContent = content;
+  files.filter(file => isImage(file.original_name)).forEach(file => {
+    const imageUrl = `/uploads/${file.filename}`;
+    const marker = `attachment:${file.original_name}`;
+    const oldTextMarker = `[캡쳐 이미지 첨부: ${file.original_name}]`;
+    renderedContent = renderedContent.split(marker).join(imageUrl);
+    renderedContent = renderedContent.split(oldTextMarker).join(`![캡쳐 이미지](${imageUrl})`);
+  });
+  return renderedContent;
 }
 
 // 게시글 첨부파일을 이미지 미리보기와 일반 파일 목록으로 나눠 표시합니다.
-function renderPostFiles(files) {
+function renderPostFiles(files, content = '') {
   const section = document.getElementById('attachSection');
   const fileList = document.getElementById('fileList');
   const imgGrid = document.getElementById('imgPreviewGrid');
@@ -101,7 +114,7 @@ function renderPostFiles(files) {
   imgGrid.innerHTML = '';
   section.style.display = files.length > 0 ? 'block' : 'none';
 
-  files.forEach(file => {
+  files.filter(file => !isInlineImageFile(file, content)).forEach(file => {
     if (isImage(file.original_name)) {
       const div = document.createElement('div');
       div.className = 'img-preview-item';
@@ -124,6 +137,13 @@ function renderPostFiles(files) {
       <button class="delete-file-btn" data-action="delete-post-file" data-file-id="${file.id}" title="삭제">✕</button>`;
     fileList.appendChild(li);
   });
+}
+
+// 본문 안에 이미 표시되는 캡쳐 이미지는 첨부파일란에 한 번 더 보여주지 않습니다.
+function isInlineImageFile(file, content) {
+  return isImage(file.original_name)
+    && (content.includes(`attachment:${file.original_name}`)
+      || content.includes(`[캡쳐 이미지 첨부: ${file.original_name}]`));
 }
 
 // 댓글 목록을 화면에 만들고, 댓글에 붙은 파일도 함께 표시합니다.
