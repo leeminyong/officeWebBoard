@@ -84,7 +84,7 @@ function renderPost(post) {
   }
   document.title = `${post.title} - ${boardMeta[currentBoard]} 게시판`;
   document.getElementById('postTitle').textContent = post.title;
-  document.getElementById('postAuthor').textContent = post.author;
+  // JavaScript 주석 문법: 혼자 사용하는 게시판이라 게시글 작성자 이름은 화면에 넣지 않습니다.
   document.getElementById('postDate').textContent = post.created_at.slice(0, 16);
   document.getElementById('postContent').innerHTML = window.marked.parse(replaceAttachmentImageMarkers(post.content, post.files || []));
   document.getElementById('updatedBadge').style.display = post.created_at !== post.updated_at ? 'inline' : 'none';
@@ -162,7 +162,7 @@ function renderComments(comments) {
     div.dataset.id = comment.id;
     div.innerHTML = `
       <div class="comment-header">
-        <span class="comment-author">${escHtml(comment.author)}</span>
+        <!-- JavaScript에서 만든 HTML 안의 주석입니다. 댓글 작성자 이름은 숨기고, 날짜와 삭제 버튼만 보여줍니다. -->
         <span>
           <span class="comment-date">${comment.created_at.slice(0, 16)}</span>
           <button class="comment-del" data-action="delete-comment" data-comment-id="${comment.id}">삭제</button>
@@ -200,7 +200,6 @@ function renderCommentFiles(files) {
 // 댓글 등록 버튼을 누르면 댓글 내용과 선택한 파일을 FormData로 서버에 보냅니다.
 async function submitComment() {
   const contentInput = document.getElementById('cmtContent');
-  const author = document.getElementById('cmtAuthor').value.trim();
   const content = contentInput.value.trim();
   if (!content) {
     showToast('댓글 내용을 입력하세요.', true);
@@ -208,7 +207,7 @@ async function submitComment() {
   }
 
   const formData = new FormData();
-  formData.append('author', author);
+  // JavaScript 주석 문법: 작성자 입력칸을 없앴기 때문에 서버가 기본값인 익명으로 저장하게 둡니다.
   formData.append('content', content);
   cmtFiles.forEach(file => formData.append('files', file));
 

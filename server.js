@@ -51,7 +51,9 @@ app.get('/api/posts', (req, res) => {
   const { count } = db.prepare('SELECT COUNT(*) as count FROM posts WHERE board = ?').get(board);
   const posts = db.prepare(`
     SELECT p.id, p.title, p.author, p.created_at, p.updated_at,
-           ROW_NUMBER() OVER (ORDER BY p.id ASC) AS row_num,
+           -- SQL 주석 문법: -- 뒤의 글은 설명입니다. 최신 글이 맨 위에 오도록 번호 계산도 최신순 기준으로 바꿉니다.
+           -- SQL 주석 문법: -- 뒤의 글은 서버가 실행하지 않는 설명입니다. 최신글을 위에 보이게 하려고 작성일이 늦은 글부터 번호를 매깁니다.
+           ROW_NUMBER() OVER (ORDER BY p.created_at DESC, p.id DESC) AS row_num,
            COUNT(DISTINCT c.id) AS comment_count,
            COUNT(DISTINCT f.id) AS file_count
     FROM posts p
@@ -59,7 +61,9 @@ app.get('/api/posts', (req, res) => {
     LEFT JOIN files    f ON f.post_id = p.id
     WHERE p.board = ?
     GROUP BY p.id
-    ORDER BY p.id ASC
+    -- SQL 주석 문법: DESC는 큰 번호가 먼저 오게 하는 정렬입니다. 새 글일수록 id가 크기 때문에 모든 게시판이 최신순으로 보입니다.
+    -- SQL 주석 문법: ORDER BY는 서버가 게시글을 어떤 순서로 보낼지 정합니다. 작성일이 가장 최근인 글이 목록 맨 위에 오도록 내림차순으로 정렬합니다.
+    ORDER BY p.created_at DESC, p.id DESC
     LIMIT ? OFFSET ?
   `).all(board, limit, offset);
 

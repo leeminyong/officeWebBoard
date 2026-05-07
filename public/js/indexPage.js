@@ -51,7 +51,14 @@ function renderList(posts) {
   }
 
   empty.style.display = 'none';
-  tbody.innerHTML = posts.map(post => {
+  // JavaScript 주석 문법: // 뒤의 글은 화면에 보이지 않는 코드 설명입니다. 서버에서 받은 글을 작성일 최신순으로 한 번 더 정리해서, 사용자는 새 글을 표 맨 위에서 보게 됩니다.
+  const latestPosts = [...posts].sort((a, b) => {
+    const dateCompare = String(b.created_at).localeCompare(String(a.created_at));
+    return dateCompare || b.id - a.id;
+  });
+  tbody.innerHTML = latestPosts.map((post, index) => {
+    // JavaScript 주석 문법: // 뒤의 글은 화면에 보이지 않는 코드 설명입니다. 최신글이 맨 위에 오므로, 왼쪽 번호도 맨 위부터 1, 2, 3 순서로 보이게 다시 계산합니다.
+    const listNumber = (currentPage - 1) * 10 + index + 1;
     const commentBadge = post.comment_count > 0
       ? `<span class="badge-comment">${post.comment_count}</span>`
       : '';
@@ -62,13 +69,13 @@ function renderList(posts) {
 
     return `
       <tr>
-        <td class="center text-muted">${post.row_num}</td>
+        <td class="center text-muted">${listNumber}</td>
         <td>
           <a class="post-title-link" href="view.html?id=${post.id}&board=${currentBoard}">${escHtml(post.title)}</a>
           ${commentBadge}${fileBadge}
           ${commentsHtml}
         </td>
-        <td class="center text-muted">${escHtml(post.author)}</td>
+        <!-- JavaScript에서 만든 HTML 안의 주석입니다. 혼자 사용하는 게시판이라 목록의 작성자 칸은 표시하지 않습니다. -->
         <td class="center text-muted">${post.created_at.slice(0, 10)}</td>
         <td class="center text-muted">${post.file_count > 0 ? '📎' : ''}</td>
       </tr>`;
@@ -81,7 +88,7 @@ function renderInlineComments(post) {
 
   return post.comments.map(comment => `
     <a class="inline-comment" href="view.html?id=${post.id}&board=${currentBoard}">
-      <span class="inline-comment-author">${escHtml(comment.author || '익명')}</span>
+      <!-- JavaScript에서 만든 HTML 안의 주석입니다. 댓글 작성자 이름도 혼자 쓰는 게시판에서는 숨깁니다. -->
       <span class="inline-comment-text">${escHtml(comment.content)}</span>
       <span class="inline-comment-date">${comment.created_at.slice(0, 10)}</span>
     </a>`).join('');

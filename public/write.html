@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   이 파일은 글쓰기와 글수정 화면입니다.
-  제목, 작성자, 내용, 첨부파일 입력칸을 화면에 배치합니다.
+  제목, 내용, 첨부파일 입력칸을 화면에 배치합니다.
 -->
 <html lang="ko">
 <head>
@@ -22,11 +22,7 @@
   <div class="card">
     <h2 id="pageTitle" style="font-size:1.1rem;margin-bottom:20px;color:#555">✏️ 새 글 작성</h2>
 
-    <!-- HTML 주석 문법: 작성자 입력칸입니다. 실제 저장 동작은 js/writePage.js에서 처리합니다. -->
-    <div class="form-group">
-      <label for="author">작성자</label>
-      <input class="form-control" id="author" placeholder="이름 (미입력 시 익명)" maxlength="30" style="max-width:200px">
-    </div>
+    <!-- HTML 주석 문법: 혼자 사용하는 게시판이라 작성자 입력칸은 제거했습니다. -->
 
     <div class="form-group">
       <label for="title">제목 <span style="color:#e74c3c">*</span></label>

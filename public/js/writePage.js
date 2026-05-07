@@ -66,7 +66,7 @@ async function loadPostForEdit() {
   }
 
   if (boardMeta[post.board]) currentBoard = post.board;
-  document.getElementById('author').value = post.author;
+  // JavaScript 주석 문법: 작성자 입력칸을 제거했기 때문에 수정 화면에서도 작성자 값은 채우지 않습니다.
   document.getElementById('title').value = post.title;
   setEditorFromSavedContent(post.content, post.files || []);
   renderExistingFiles(post.files || []);
@@ -161,7 +161,6 @@ function removeSelectedFile(index) {
 
 // 등록/수정 버튼을 누르면 글 내용, 새 첨부파일, 삭제할 기존 파일 목록을 서버에 보냅니다.
 async function submitPost() {
-  const author = document.getElementById('author').value.trim();
   const title = document.getElementById('title').value.trim();
   const content = getEditorMarkdown().trim();
   document.getElementById('content').value = content;
@@ -180,7 +179,7 @@ async function submitPost() {
   button.textContent = '처리 중...';
 
   const formData = new FormData();
-  formData.append('author', author);
+  // JavaScript 주석 문법: 작성자 값을 보내지 않으면 서버가 기본값인 익명으로 저장합니다.
   formData.append('title', title);
   formData.append('content', content);
   formData.append('board', currentBoard);
@@ -236,13 +235,29 @@ function addInlineImageFiles(files) {
 
 // 내용 편집 영역의 현재 커서 위치에 이미지 태그를 바로 넣습니다. 사용자는 붙여넣는 즉시 이미지를 볼 수 있습니다.
 function insertInlineImage(file) {
+  const wrapper = createResizableImageWrapper(file.name);
   const image = document.createElement('img');
   image.src = URL.createObjectURL(file);
   image.alt = '캡쳐 이미지';
   image.dataset.attachmentName = file.name;
-  image.onload = () => URL.revokeObjectURL(image.src);
-  insertNodeAtCursor(image);
+  image.onload = () => {
+    wrapper.style.width = `${Math.min(image.naturalWidth || 520, 520)}px`;
+    wrapper.style.height = `${Math.min(image.naturalHeight || 320, 420)}px`;
+    URL.revokeObjectURL(image.src);
+  };
+  wrapper.appendChild(image);
+  insertNodeAtCursor(wrapper);
   insertNodeAtCursor(document.createElement('br'));
+}
+
+// 이미지 크기를 사용자가 바꿀 수 있도록 감싸는 박스를 만듭니다. tabindex는 클릭해서 선택 표시를 볼 수 있게 해줍니다.
+function createResizableImageWrapper(fileName) {
+  const wrapper = document.createElement('span');
+  wrapper.className = 'inline-image-resizer';
+  wrapper.contentEditable = 'false';
+  wrapper.tabIndex = 0;
+  wrapper.dataset.attachmentName = fileName;
+  return wrapper;
 }
 
 // contenteditable 편집 영역은 textarea가 아니므로, 브라우저 선택 영역에 직접 노드를 끼워 넣습니다.
@@ -307,15 +322,61 @@ function setEditorFromSavedContent(content, files) {
       .join(`![캡쳐 이미지](/uploads/${file.filename})`);
   });
   editor.innerHTML = window.marked.parse(visibleContent);
+  makeEditorImagesResizable(files);
   document.getElementById('content').value = content;
 }
 
 // 편집 영역의 HTML을 서버에 저장할 마크다운으로 바꿉니다. 붙여넣은 이미지는 attachment:파일명 형태로 저장합니다.
 function getEditorMarkdown() {
+  syncInlineImageSizes();
   const editorClone = document.getElementById('contentEditor').cloneNode(true);
-  editorClone.querySelectorAll('img[data-attachment-name]').forEach(image => {
-    image.setAttribute('src', `attachment:${image.dataset.attachmentName}`);
+  editorClone.querySelectorAll('.inline-image-resizer').forEach(wrapper => {
+    const image = wrapper.querySelector('img[data-attachment-name]');
+    if (!image) return;
+    const width = Number(wrapper.dataset.width) || 520;
+    const height = Number(wrapper.dataset.height) || 320;
+    const html = document.createElement('div');
+    html.innerHTML = `<img src="attachment:${image.dataset.attachmentName}" alt="${image.alt || '캡쳐 이미지'}" width="${width}" height="${height}">`;
+    wrapper.replaceWith(html.firstChild);
   });
   const turndown = new window.TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
+  turndown.addRule('keepSizedAttachmentImage', {
+    filter: node => node.nodeName === 'IMG' && node.getAttribute('src')?.startsWith('attachment:'),
+    replacement: (_content, node) => {
+      const src = node.getAttribute('src');
+      const alt = node.getAttribute('alt') || '캡쳐 이미지';
+      const width = node.getAttribute('width');
+      const height = node.getAttribute('height');
+      return `\n<img src="${src}" alt="${alt}" width="${width}" height="${height}">\n`;
+    },
+  });
   return turndown.turndown(editorClone.innerHTML);
+}
+
+// 저장 직전에 사용자가 손으로 조절한 이미지 박스의 현재 가로/세로 크기를 읽어둡니다.
+function syncInlineImageSizes() {
+  document.querySelectorAll('.inline-image-resizer').forEach(wrapper => {
+    const rect = wrapper.getBoundingClientRect();
+    wrapper.dataset.width = String(Math.round(rect.width || wrapper.offsetWidth || 520));
+    wrapper.dataset.height = String(Math.round(rect.height || wrapper.offsetHeight || 320));
+  });
+}
+
+// 수정 화면에서 기존 본문 이미지를 다시 열었을 때도 크기를 조절할 수 있도록 이미지에 리사이즈 박스를 씌웁니다.
+function makeEditorImagesResizable(files) {
+  const editor = document.getElementById('contentEditor');
+  editor.querySelectorAll('img').forEach(image => {
+    if (image.closest('.inline-image-resizer')) return;
+    const file = files.find(item => image.src.includes(`/uploads/${item.filename}`));
+    if (!file) return;
+
+    image.dataset.attachmentName = file.original_name;
+    const wrapper = createResizableImageWrapper(file.original_name);
+    const width = image.getAttribute('width') || image.naturalWidth || 520;
+    const height = image.getAttribute('height') || image.naturalHeight || 320;
+    wrapper.style.width = `${width}px`;
+    wrapper.style.height = `${height}px`;
+    image.replaceWith(wrapper);
+    wrapper.appendChild(image);
+  });
 }
