@@ -10,6 +10,7 @@ import {
   deletePost,
   deletePostFile,
   fetchPost,
+  updateComment,
 } from './api.js';
 import { downloadFromUrl, escHtml, formatSize, isImage, showToast } from './utils.js';
 
@@ -19,6 +20,7 @@ const params = new URLSearchParams(location.search);
 const postId = params.get('id');
 let currentBoard = boardMeta[params.get('board')] ? params.get('board') : 'project';
 let cmtFiles = [];
+let editingCommentId = null;
 
 if (!postId) location.href = boardUrl(currentBoard);
 
@@ -165,14 +167,32 @@ function renderComments(comments) {
         <!-- JavaScript에서 만든 HTML 안의 주석입니다. 댓글 작성자 이름은 숨기고, 날짜와 삭제 버튼만 보여줍니다. -->
         <span>
           <span class="comment-date">${comment.created_at.slice(0, 16)}</span>
+          <button class="comment-del comment-edit" data-action="edit-comment" data-comment-id="${comment.id}">수정</button>
           <button class="comment-del" data-action="delete-comment" data-comment-id="${comment.id}">삭제</button>
         </span>
       </div>
-      <div class="comment-text md-body"></div>
+      <!-- HTML 주석 문법: 이 설명은 화면에 보이지 않습니다. 수정 중인 댓글만 입력창으로 바꿔서 사용자가 댓글 내용을 고칠 수 있게 합니다. -->
+      ${editingCommentId === comment.id ? renderCommentEditForm(comment) : '<div class="comment-text md-body"></div>'}
       ${renderCommentFiles(comment.files || [])}`;
-    div.querySelector('.comment-text').innerHTML = window.marked.parse(comment.content);
+    const textEl = div.querySelector('.comment-text');
+    if (textEl) textEl.innerHTML = window.marked.parse(comment.content);
     list.appendChild(div);
   });
+}
+
+// 댓글 수정 입력창 HTML을 만듭니다. 기존 댓글 내용은 textarea 안에 넣어서 바로 고칠 수 있게 합니다.
+function renderCommentEditForm(comment) {
+  return `
+    <div class="comment-form" style="margin-top:8px">
+      <textarea class="form-control" data-edit-comment-content="${comment.id}">${escHtml(comment.content)}</textarea>
+      <div class="action-bar" style="margin-top:8px">
+        <span></span>
+        <div class="right">
+          <button class="btn btn-secondary btn-sm" data-action="cancel-edit-comment" data-comment-id="${comment.id}">취소</button>
+          <button class="btn btn-primary btn-sm" data-action="save-edit-comment" data-comment-id="${comment.id}">저장</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 // 댓글 첨부파일 HTML을 만듭니다. 이미지면 작은 미리보기, 일반 파일이면 파일명 줄로 보여줍니다.
@@ -295,12 +315,55 @@ async function handleCommentClick(event) {
     await handleDeleteComment(target.dataset.commentId);
     return;
   }
+  if (target.dataset.action === 'edit-comment') {
+    startEditComment(Number(target.dataset.commentId));
+    return;
+  }
+  if (target.dataset.action === 'cancel-edit-comment') {
+    cancelEditComment();
+    return;
+  }
+  if (target.dataset.action === 'save-edit-comment') {
+    await submitEditComment(Number(target.dataset.commentId));
+    return;
+  }
   if (target.dataset.action === 'download-comment-file') {
     downloadFromUrl(`/api/comment-files/${target.dataset.fileId}/download`, target.dataset.fileName);
     return;
   }
   if (target.dataset.action === 'delete-comment-file') {
     await removeFile(target, deleteCommentFile);
+  }
+}
+
+// 수정 버튼을 누른 댓글 id를 기억한 뒤 목록을 다시 그려서, 해당 댓글만 입력창으로 바뀌게 합니다.
+async function startEditComment(commentId) {
+  editingCommentId = commentId;
+  await loadPost();
+}
+
+// 댓글 수정을 취소하면 수정 중인 댓글 id를 비우고 원래 댓글 보기 화면으로 되돌립니다.
+async function cancelEditComment() {
+  editingCommentId = null;
+  await loadPost();
+}
+
+// 저장 버튼을 누르면 입력창의 댓글 내용을 서버에 보내고, 성공하면 최신 댓글 목록을 다시 불러옵니다.
+async function submitEditComment(commentId) {
+  const input = document.querySelector(`[data-edit-comment-content="${commentId}"]`);
+  const content = input?.value.trim();
+  if (!content) {
+    showToast('수정할 댓글 내용을 입력하세요.', true);
+    return;
+  }
+
+  const res = await updateComment(postId, commentId, content);
+  if (res.ok) {
+    editingCommentId = null;
+    await loadPost();
+    showToast('댓글이 수정되었습니다.');
+  } else {
+    showToast('댓글 수정 실패', true);
   }
 }
 

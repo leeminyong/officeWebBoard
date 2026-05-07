@@ -32,14 +32,9 @@ const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
 const BOARDS = new Set(['project', 'maintenance', 'app-version', 'files']);
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+const distDir = path.join(__dirname, 'dist');
+app.use(express.static(fs.existsSync(distDir) ? distDir : path.join(__dirname, 'public')));
 app.use('/uploads', express.static(uploadsDir));
-app.get('/marked.js', (req, res) =>
-  res.sendFile(path.join(__dirname, 'node_modules/marked/lib/marked.umd.js'))
-);
-app.get('/turndown.js', (req, res) =>
-  res.sendFile(path.join(__dirname, 'node_modules/turndown/lib/turndown.browser.umd.js'))
-);
 
 // ── 게시글 목록 (페이지네이션) ──────────────────────────────
 app.get('/api/posts', (req, res) => {
@@ -181,6 +176,23 @@ app.post('/api/posts/:id/comments', upload.array('files', 10), (req, res) => {
   res.json(comment);
 });
 
+// ── 댓글 수정 ─────────────────────────────────────────────
+// JavaScript 주석 문법: // 뒤의 글은 서버 실행에 영향을 주지 않는 설명입니다. 댓글 수정 요청이 오면 해당 게시글에 속한 댓글인지 확인한 뒤 내용만 바꿉니다.
+app.put('/api/posts/:id/comments/:cid', (req, res) => {
+  const { content } = req.body;
+  if (!content?.trim()) return res.status(400).json({ error: '댓글 내용은 필수입니다.' });
+
+  const comment = db.prepare('SELECT * FROM comments WHERE id = ? AND post_id = ?').get(req.params.cid, req.params.id);
+  if (!comment) return res.status(404).json({ error: '댓글을 찾을 수 없습니다.' });
+
+  db.prepare('UPDATE comments SET content = ? WHERE id = ? AND post_id = ?')
+    .run(content.trim(), req.params.cid, req.params.id);
+
+  const updatedComment = db.prepare('SELECT * FROM comments WHERE id = ?').get(req.params.cid);
+  updatedComment.files = db.prepare('SELECT * FROM comment_files WHERE comment_id = ? ORDER BY id').all(req.params.cid);
+  res.json(updatedComment);
+});
+
 // ── 댓글 삭제 ─────────────────────────────────────────────
 // 댓글 삭제 때 댓글에 붙은 첨부파일도 같이 지워서 불필요한 파일이 남지 않게 합니다.
 app.delete('/api/posts/:id/comments/:cid', (req, res) => {
@@ -278,6 +290,11 @@ function deleteFile(fileId) {
 
 function getBoard(board) {
   return BOARDS.has(board) ? board : 'project';
+}
+
+// Vue Router history mode 를 위해 API/업로드 외 경로는 index.html 로 fallback
+if (fs.existsSync(distDir)) {
+  app.get('*', (req, res) => res.sendFile(path.join(distDir, 'index.html')));
 }
 
 // Use plain HTTP again so every office laptop can connect without installing certificates.

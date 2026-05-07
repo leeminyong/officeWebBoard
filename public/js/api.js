@@ -34,6 +34,16 @@ export function createComment(postId, formData) {
   return fetch(`/api/posts/${postId}/comments`, { method: 'POST', body: formData });
 }
 
+// JavaScript 주석 문법: // 뒤의 글은 화면에 보이지 않는 코드 설명입니다. 댓글 수정 버튼을 눌렀을 때 새 댓글 내용을 서버로 보내는 함수입니다.
+export async function updateComment(postId, commentId, content) {
+  const res = await fetch(`/api/posts/${postId}/comments/${commentId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+  return { ok: res.ok, data: await res.json() };
+}
+
 export function deleteComment(postId, commentId) {
   return fetch(`/api/posts/${postId}/comments/${commentId}`, { method: 'DELETE' });
 }
