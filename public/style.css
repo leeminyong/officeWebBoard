@@ -292,9 +292,15 @@ a { color: inherit; text-decoration: none; }
   padding: 0; margin-left: 8px;
 }
 
+/* CSS 주석은 이렇게 적습니다: 이 안의 글은 화면에 보이지 않고, 코드 설명용으로만 사용됩니다. */
+/* 댓글 작성 영역입니다. 이름 입력칸, 댓글 입력칸, 파일 첨부, 댓글 등록 버튼을 세로로 배치합니다. */
 .comment-form { display: flex; flex-direction: column; gap: 8px; }
+/* 이름 입력칸과 댓글 입력칸을 한 줄에 나란히 놓고, 두 칸 사이에 8px 간격을 둡니다. */
 .comment-form .row { display: flex; gap: 8px; }
-.comment-form .author-input { width: 160px; }
+/* 이름은 짧게 입력하는 부분이라 가로 160px, 세로 44px만 사용해서 너무 큰 박스로 보이지 않게 줄였습니다. */
+.comment-form .author-input { width: 160px; height: 44px; }
+/* 댓글 입력칸은 짧은 문장을 쓰기 충분한 88px 높이로 줄였습니다. 기존 공통 textarea 높이 200px보다 작게 보이도록 댓글창에만 따로 적용합니다. */
+.comment-form textarea.form-control { min-height: 88px; height: 88px; }
 
 /* ── 폼 ── */
 .form-group { margin-bottom: 18px; }
