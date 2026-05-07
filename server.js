@@ -9,7 +9,7 @@ const PORT = 3000;
 // 같은 내부망의 다른 PC도 접속할 수 있도록 모든 네트워크 주소에서 요청을 받게 했습니다.
 const HOST = '0.0.0.0';
 // Browser guide address for this PC on the office network.
-const DISPLAY_HOST = '192.168.56.102';
+const DISPLAY_HOST = '192.168.0.139';
 
 // 첨부파일을 한곳에 보관하려고 uploads 폴더 경로를 정했습니다.
 const uploadsDir = path.join(__dirname, 'uploads');
