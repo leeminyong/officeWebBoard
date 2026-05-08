@@ -4,10 +4,27 @@
       "Bash(mkdir -p \"d:\\\\officeWebBoard\\\\src\\\\composables\" \"d:\\\\officeWebBoard\\\\src\\\\views\" \"d:\\\\officeWebBoard\\\\src\\\\components\")",
       "Bash(npm install *)",
       "Bash(npm run *)",
-      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs\")"
+      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs\")",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
     ],
     "additionalDirectories": [
       "d:\\officeWebBoard\\src"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "& 'D:\\officeWebBoard\\.claude\\sync-claude-md.ps1'",
+            "statusMessage": "CLAUDE.md → AGENTS.md 동기화 중..."
+          }
+        ]
+      }
     ]
   }
 }

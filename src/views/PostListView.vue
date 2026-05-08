@@ -43,7 +43,9 @@
                   href="#"
                   @click.prevent="goToPost(post.id)"
                 >
-                  <span class="inline-comment-text">{{ comment.content }}</span>
+                  <!-- stripUrls()로 URL을 제거한 텍스트만 표시합니다. -->
+                  <!-- 게시글 목록에서는 긴 URL이 지저분하게 보일 수 있어서, 텍스트 부분만 노출합니다. -->
+                  <span class="inline-comment-text">{{ stripUrls(comment.content) }}</span>
                   <span class="inline-comment-date">{{ comment.created_at.slice(0, 10) }}</span>
                 </a>
               </template>
@@ -68,6 +70,25 @@ import { usePostList } from '../composables/usePostList.js'
 import { boardMeta } from '../board.js'
 
 const route = useRoute()
+
+/**
+ * stripUrls(text) : 댓글 내용에서 URL(http/https로 시작하는 링크)을 제거하는 함수입니다.
+ *
+ * - 정규표현식(regex)이란? 문자열에서 특정 패턴을 찾는 규칙입니다.
+ *   예) /https?:\/\/\S+/g 는 "http://" 또는 "https://"로 시작하는 단어를 찾습니다.
+ *     - https? → "http" 다음 's'가 있어도 되고 없어도 됨 (? = 0 또는 1개)
+ *     - \/\/ → "//" 를 의미 (슬래시는 특수문자라서 \로 표시)
+ *     - \S+ → 공백이 아닌 문자가 1개 이상 연속됨 (URL 끝까지)
+ *     - g → 문자열 전체에서 모두 찾음 (global 플래그)
+ * - replace(pattern, '') : 찾은 패턴을 빈 문자열('')로 교체 → 삭제 효과
+ * - trim() : 앞뒤 공백을 제거합니다.
+ *
+ * 안드로이드로 비유하면: String.replaceAll()과 비슷한 역할입니다.
+ */
+function stripUrls(text) {
+  if (!text) return ''
+  return text.replace(/https?:\/\/\S+/g, '').trim()
+}
 // usePostList()에서 필요한 상태와 함수를 가져옵니다.
 // { } 안에 쓴 이름은 usePostList.js의 return 에서 반환한 이름과 일치해야 합니다.
 const { postList, pageInfo, currentBoard, loadPosts, goToWrite, goToPost } = usePostList()
