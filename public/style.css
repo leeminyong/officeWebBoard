@@ -294,7 +294,9 @@ a { color: inherit; text-decoration: none; }
 }
 .comment-author { font-weight: 600; font-size: .88rem; }
 .comment-date   { font-size: .78rem; color: #aaa; }
-.comment-text   { font-size: .9rem; white-space: pre-wrap; word-break: break-all; }
+.comment-text   { font-size: .9rem; word-break: break-word; }
+/* white-space: pre-wrap 제거 - 댓글도 marked로 HTML 변환하므로
+   이 속성이 있으면 <p> 태그 사이 빈 줄이 화면에 나타나 첨부파일과 간격이 커집니다. */
 .comment-del {
   background: none; border: none; color: #e74c3c; cursor: pointer; font-size: .78rem;
   padding: 0; margin-left: 8px;
