@@ -226,8 +226,11 @@ a { color: inherit; text-decoration: none; }
 .post-content {
   min-height: 120px;
   line-height: 1.8;
-  white-space: pre-wrap;
-  word-break: break-all;
+  /* white-space: pre-wrap 은 제거했습니다. */
+  /* 이전에 plain text 시절 줄바꿈 보존용으로 넣었던 설정인데, */
+  /* 지금은 marked가 HTML 태그로 줄바꿈을 처리하므로 이 속성이 있으면 */
+  /* <p> 태그 사이 빈 줄(\n)까지 화면에 출력돼서 간격이 커집니다. */
+  word-break: break-word;
   font-size: .95rem;
 }
 
@@ -423,9 +426,11 @@ textarea.form-control { resize: vertical; min-height: 200px; }
 .md-body h1 { font-size: 1.6rem; border-bottom: 2px solid #eee; padding-bottom: 6px; }
 .md-body h2 { font-size: 1.3rem; border-bottom: 1px solid #eee; padding-bottom: 4px; }
 .md-body h3 { font-size: 1.1rem; }
-.md-body p  { margin: .6em 0; }
-.md-body ul, .md-body ol { padding-left: 1.6em; margin: .6em 0; }
-.md-body li { margin: .2em 0; }
+/* p 태그 마진을 줄였습니다. */
+/* marked가 줄바꿈을 <p> 태그로 변환할 때 위아래 마진이 생겨서 간격이 너무 커지는 문제를 줄입니다. */
+.md-body p  { margin: .15em 0; }
+.md-body ul, .md-body ol { padding-left: 1.6em; margin: .15em 0; }
+.md-body li { margin: .1em 0; }
 .md-body blockquote {
   border-left: 4px solid #1a73e8; margin: .8em 0;
   padding: 6px 14px; background: #f0f6ff; color: #555; border-radius: 0 6px 6px 0;
