@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(mkdir -p \"d:\\\\officeWebBoard\\\\src\\\\composables\" \"d:\\\\officeWebBoard\\\\src\\\\views\" \"d:\\\\officeWebBoard\\\\src\\\\components\")",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs\")"
     ],
     "additionalDirectories": [
       "d:\\officeWebBoard\\src"
