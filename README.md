@@ -94,3 +94,38 @@ This project uses **JavaScript** for the backend, running on **Node.js**.
 - Database: SQLite (`board.db`)
 - Server entry point: `server.js`
 - Database setup: `database.js`
+
+---
+
+## 자동 실행 설정 위치
+
+시작 프로그램 폴더라는 곳에 등록되어 있습니다.
+이 폴더에 파일을 넣어두면, 로그인할 때마다 자동으로 실행됩니다.
+
+폴더 위치를 여는 방법:
+
+1. **Win + R** 키를 누릅니다
+2. 아래 주소를 붙여넣고 **엔터**
+
+```
+shell:startup
+```
+
+그러면 이런 파일들이 보일 겁니다:
+
+```
+📁 Startup
+├── OfficeWebBoardAutoStart.lnk   ← 이 사이트 자동 실행
+└── OneNote(으)로 보내기.lnk
+```
+
+---
+
+## 다른 사이트도 추가하려면?
+
+같은 방식으로 하면 됩니다.
+
+1. 새 사이트의 서버 실행 파일 (`node server.js` 같은 것) 만들기
+2. 그 파일의 **바로가기**를 이 폴더에 넣기
+
+그러면 자동으로 같이 실행됩니다.
