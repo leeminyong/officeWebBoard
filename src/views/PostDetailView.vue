@@ -124,7 +124,9 @@ const {
 onMounted(() => loadPost())
 watch(() => route.params.id, () => loadPost())
 
-function renderMd(text) { return marked.parse(text || '') }
+// breaks: true → 줄바꿈 1개(\n)도 <br>로 변환
+// 기본값은 false라 줄바꿈 2개(\n\n)만 문단 나누기로 인식해서 개행이 사라졌었음
+function renderMd(text) { return marked.parse(text || '', { breaks: true }) }
 function makeUrl(file) { return URL.createObjectURL(file) }
 
 function isInlineInContent(file, content) {
