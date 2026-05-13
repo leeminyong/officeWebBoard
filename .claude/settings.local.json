@@ -6,7 +6,9 @@
       "Bash(npm run *)",
       "Bash(export PATH=\"$PATH:/c/Program Files/nodejs\")",
       "Skill(update-config)",
-      "Skill(update-config:*)"
+      "Skill(update-config:*)",
+      "Bash(git checkout *)",
+      "Bash(del \"C:\\\\Users\\\\USER\\\\.claude\\\\projects\\\\d--officeWebBoard\\\\memory\\\\feedback_mvvm_explanation.md\")"
     ],
     "additionalDirectories": [
       "d:\\officeWebBoard\\src"
@@ -19,8 +21,8 @@
         "hooks": [
           {
             "type": "command",
-            "shell": "powershell",
             "command": "& 'D:\\officeWebBoard\\.claude\\sync-claude-md.ps1'",
+            "shell": "powershell",
             "statusMessage": "CLAUDE.md → AGENTS.md 동기화 중..."
           }
         ]

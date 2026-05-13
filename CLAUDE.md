@@ -8,6 +8,21 @@
 - 어려운 웹 개발 용어는 가능한 한 피합니다.
 - 꼭 필요한 개발 용어를 써야 할 때는, 그 단어가 무슨 뜻인지 짧게 풀어서 설명합니다.
 
+## MVVM 설명 규칙
+
+코드를 수정하거나 추가할 때, 반드시 다음 두 가지를 설명합니다:
+
+1. **MVVM 레이어**: 이 코드가 Model / ViewModel / View 중 어디에 해당하는지
+2. **파일 선택 이유**: 왜 이 파일에 넣었는지 (이 파일이 어떤 역할을 하는 파일인지)
+
+이 프로젝트의 MVVM 구조는 다음과 같습니다:
+
+| MVVM 레이어 | 이 프로젝트의 파일 | 안드로이드 비유 |
+|---|---|---|
+| View | `src/views/*.vue`, `src/components/*.vue`의 `<template>` 영역 | XML 레이아웃, Activity/Fragment |
+| ViewModel | `src/composables/use***.js` | ViewModel 클래스 |
+| Model | `src/api.js`, `src/board.js` | Repository, 데이터 클래스 |
+
 ## 코드 수정 방식
 
 - 코드를 수정하거나 기능을 추가할 때, 관련 코드 전체에 주석을 추가합니다.
