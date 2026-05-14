@@ -29,12 +29,52 @@ const storage = multer.diskStorage({
 });
 // 게시글은 최대 20개, 댓글은 각 API에서 최대 10개까지 받을 수 있게 multer 업로드 기능을 준비했습니다.
 const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
-const BOARDS = new Set(['project', 'maintenance', 'app-version', 'files']);
+
+// 서버 시작 시 DB에서 게시판 목록을 불러와 Set으로 만듭니다.
+// Set : 중복 없이 값을 모아두는 자료구조입니다. (안드로이드의 HashSet과 비슷)
+// 게시글 저장/조회 시 유효한 게시판인지 빠르게 확인하는 데 사용합니다.
+const BOARDS = new Set(db.prepare('SELECT key FROM boards').all().map(b => b.key));
 
 app.use(express.json());
 const distDir = path.join(__dirname, 'dist');
 app.use(express.static(fs.existsSync(distDir) ? distDir : path.join(__dirname, 'public')));
 app.use('/uploads', express.static(uploadsDir));
+
+// ── 게시판 목록 조회 ───────────────────────────────────────
+// 프론트엔드에서 사이드바 메뉴를 그릴 때 이 API로 게시판 목록을 가져갑니다.
+app.get('/api/boards', (req, res) => {
+  // sort_order 오름차순 → created_at 오름차순 순으로 정렬해서 반환합니다.
+  const boards = db.prepare('SELECT key, label FROM boards ORDER BY sort_order ASC, created_at ASC').all();
+  res.json(boards);
+});
+
+// ── 게시판 추가 ────────────────────────────────────────────
+// 사용자가 "게시판 추가하기"로 새 메뉴를 만들 때 호출됩니다.
+app.post('/api/boards', (req, res) => {
+  const { label } = req.body;
+
+  // label(게시판 이름)이 없으면 오류를 반환합니다.
+  if (!label?.trim()) return res.status(400).json({ error: '게시판 이름을 입력해주세요.' });
+
+  const trimmed = label.trim();
+
+  // 같은 이름의 게시판이 이미 있는지 확인합니다.
+  const existing = db.prepare('SELECT key FROM boards WHERE label = ?').get(trimmed);
+  if (existing) return res.status(409).json({ error: '같은 이름의 게시판이 이미 있습니다.' });
+
+  // 새 게시판의 key를 타임스탬프 기반으로 자동 생성합니다.
+  // 예) 'board_1715000000000' — 사용자가 직접 입력할 필요 없습니다.
+  const key = 'board_' + Date.now();
+
+  // 현재 게시판 수를 sort_order로 사용해서 항상 맨 아래에 추가됩니다.
+  const sortOrder = db.prepare('SELECT COUNT(*) as count FROM boards').get().count;
+  db.prepare('INSERT INTO boards (key, label, sort_order) VALUES (?, ?, ?)').run(key, trimmed, sortOrder);
+
+  // 서버 메모리의 BOARDS Set에도 추가해서 새 게시판에 글을 바로 쓸 수 있게 합니다.
+  BOARDS.add(key);
+
+  res.json({ key, label: trimmed });
+});
 
 // ── 게시글 목록 (페이지네이션) ──────────────────────────────
 app.get('/api/posts', (req, res) => {

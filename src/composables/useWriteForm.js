@@ -2,16 +2,19 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { fetchPost, createPost, updatePost } from '../api.js'
 import { useToast } from './useToast.js'
-import { boardMeta } from '../board.js'
+import { useBoards } from './useBoards.js'
 
 export function useWriteForm() {
   const route = useRoute()
   const router = useRouter()
   const { showToast } = useToast()
+  // boardMap : 현재 존재하는 게시판 목록입니다. 사용자가 추가한 게시판도 포함됩니다.
+  const { boardMap } = useBoards()
 
   const editId = route.params.id || null
   const isEdit = Boolean(editId)
-  const currentBoard = ref(boardMeta[route.query.board] ? route.query.board : 'project')
+  // boardMap.value[...] : 유효한 게시판 키인지 확인합니다. 없으면 기본값 'project'를 사용합니다.
+  const currentBoard = ref(boardMap.value[route.query.board] ? route.query.board : 'project')
 
   const title = ref('')
   const selectedFiles = ref([])
@@ -23,7 +26,7 @@ export function useWriteForm() {
     if (!isEdit) return null
     const post = await fetchPost(editId)
     if (!post) { showToast('수정할 글을 찾을 수 없습니다.', true); return null }
-    if (boardMeta[post.board]) currentBoard.value = post.board
+    if (boardMap.value[post.board]) currentBoard.value = post.board
     title.value = post.title
     return post
   }

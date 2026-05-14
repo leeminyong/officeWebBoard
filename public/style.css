@@ -62,6 +62,88 @@ a { color: inherit; text-decoration: none; }
   color: #1a73e8;
 }
 
+/* ── 게시판 추가하기 버튼 ── */
+/* 사이드바 맨 아래에 있는 게시판 추가 버튼입니다. */
+.side-menu-add-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  border: 1.5px dashed #c5cfe8;  /* 점선 테두리로 '추가' 느낌을 줍니다 */
+  border-radius: 6px;
+  background: none;
+  color: #7a9cc7;
+  font-size: .88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+  font-family: inherit;
+}
+.side-menu-add-btn:hover {
+  background: #f0f6ff;
+  color: #1a73e8;
+  border-color: #1a73e8;
+}
+
+/* ── 게시판 추가 입력 폼 ── */
+/* "게시판 추가하기" 버튼을 클릭하면 이 영역이 나타납니다. */
+.add-board-form {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+/* 게시판 이름을 입력하는 텍스트 박스입니다. */
+.add-board-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid #1a73e8;  /* 활성 상태를 파란 테두리로 표시합니다 */
+  border-radius: 6px;
+  font-size: .88rem;
+  font-family: inherit;
+  color: #222;
+  outline: none;
+  background: #fff;
+  box-shadow: 0 0 0 3px #e8f0fe;  /* 포커스 상태처럼 보이게 합니다 */
+}
+/* 확인/취소 버튼을 가로로 나란히 배치합니다. */
+.add-board-actions {
+  display: flex;
+  gap: 6px;
+}
+/* 확인 버튼 스타일 */
+.add-board-confirm {
+  flex: 1;
+  padding: 6px 0;
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity .15s;
+}
+.add-board-confirm:hover { opacity: .85; }
+/* 취소 버튼 스타일 */
+.add-board-cancel {
+  flex: 1;
+  padding: 6px 0;
+  background: #ecf0f1;
+  color: #555;
+  border: none;
+  border-radius: 6px;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity .15s;
+}
+.add-board-cancel:hover { opacity: .85; }
+
 /* ── 컨테이너 ── */
 .container {
   max-width: 920px;

@@ -13,8 +13,8 @@ import { fetchPostList } from '../api.js'
 // 화면 하단에 잠깐 뜨는 알림(토스트 메시지)을 띄우는 함수입니다.
 import { useToast } from './useToast.js'
 
-// 게시판 종류별 메타 정보(이름, 설명 등)가 담긴 객체입니다.
-import { boardMeta } from '../board.js'
+// useBoards : 게시판 목록(동적으로 추가된 게시판 포함)을 제공하는 ViewModel composable입니다.
+import { useBoards } from './useBoards.js'
 
 // usePostList : 게시글 목록 화면에서 필요한 상태와 함수들을 묶어서 제공하는 composable 함수입니다.
 // Android의 ViewModel 클래스와 동일한 역할입니다.
@@ -25,6 +25,8 @@ export function usePostList() {
   const router = useRouter()
   // 토스트 메시지를 띄우는 함수를 가져옵니다.
   const { showToast } = useToast()
+  // boardMap : { key: label } 형태의 게시판 목록입니다. 사용자가 추가한 게시판도 포함됩니다.
+  const { boardMap } = useBoards()
 
   // postList : 화면에 표시할 게시글 목록입니다. 처음엔 빈 배열([])로 시작합니다.
   // ref([]) 로 감싸면 postList.value 가 바뀔 때 화면이 자동으로 다시 그려집니다.
@@ -34,9 +36,9 @@ export function usePostList() {
   const pageInfo = ref({ total: 0, page: 1, totalPages: 1 })
 
   // currentBoard : URL의 ?board= 값을 읽어서 현재 게시판 종류를 반환합니다.
-  // boardMeta에 없는 값이 오면 기본값 'project'를 사용합니다.
-  // computed(() => ...) 는 route.query.board 가 바뀔 때마다 자동으로 재계산됩니다.
-  const currentBoard = computed(() => boardMeta[route.query.board] ? route.query.board : 'project')
+  // boardMap.value에 없는 값이 오면 기본값 'project'를 사용합니다.
+  // 사용자가 추가한 게시판도 boardMap에 포함되므로 동적으로 인식합니다.
+  const currentBoard = computed(() => boardMap.value[route.query.board] ? route.query.board : 'project')
 
   // loadPosts : 서버에서 게시글 목록을 불러와서 postList에 저장하는 함수입니다.
   // async/await : 서버 통신처럼 시간이 걸리는 작업을 기다릴 때 사용하는 문법입니다.

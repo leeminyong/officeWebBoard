@@ -8,7 +8,11 @@
       "Skill(update-config)",
       "Skill(update-config:*)",
       "Bash(git checkout *)",
-      "Bash(del \"C:\\\\Users\\\\USER\\\\.claude\\\\projects\\\\d--officeWebBoard\\\\memory\\\\feedback_mvvm_explanation.md\")"
+      "Bash(del \"C:\\\\Users\\\\USER\\\\.claude\\\\projects\\\\d--officeWebBoard\\\\memory\\\\feedback_mvvm_explanation.md\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/boards -H \"Content-Type: application/json\" -d \"{\\\\\"label\\\\\":\\\\\"테스트\\\\\"}\")",
+      "Bash(curl -s http://localhost:3000/api/boards)",
+      "Bash(curl -s -X POST http://localhost:3000/api/boards -H \"Content-Type: application/json\" -d \"{\\\\\"label\\\\\":\\\\\"공지사항\\\\\"}\")",
+      "Bash(node -e \"const db = require\\('./database'\\); db.prepare\\(\\\\\"DELETE FROM boards WHERE key LIKE 'board_%'\\\\\"\\).run\\(\\); console.log\\('삭제 완료:', db.prepare\\('SELECT * FROM boards'\\).all\\(\\)\\)\")"
     ],
     "additionalDirectories": [
       "d:\\officeWebBoard\\src"

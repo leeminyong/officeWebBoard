@@ -3,7 +3,8 @@
     <div class="card">
       <div class="toolbar">
         <!-- pageInfo.total : 전체 게시글 수를 표시합니다. -->
-        <h2>{{ boardMeta[currentBoard] }} 전체 {{ pageInfo.total }}건</h2>
+        <!-- boardMap[currentBoard] : 현재 게시판의 이름을 동적으로 가져옵니다. 사용자가 추가한 게시판도 표시됩니다. -->
+        <h2>{{ boardMap[currentBoard] }} 전체 {{ pageInfo.total }}건</h2>
         <button class="btn btn-primary" @click="goToWrite">✏️ 글쓰기</button>
       </div>
 
@@ -67,9 +68,12 @@ import { onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Pagination from '../components/Pagination.vue'
 import { usePostList } from '../composables/usePostList.js'
-import { boardMeta } from '../board.js'
+// useBoards : 사용자가 추가한 게시판을 포함한 전체 목록을 제공합니다.
+import { useBoards } from '../composables/useBoards.js'
 
 const route = useRoute()
+// boardMap : 게시판 key → 이름 변환 객체입니다. 예) { project: '프로젝트', board_123: '공지사항' }
+const { boardMap } = useBoards()
 
 /**
  * stripUrls(text) : 댓글 내용에서 URL(http/https로 시작하는 링크)을 제거하는 함수입니다.
