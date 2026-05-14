@@ -21,6 +21,29 @@ export async function addBoard(label) {
   return { ok: res.ok, data: await res.json() }
 }
 
+// 게시판 이름을 수정하는 함수입니다.
+// key : 수정할 게시판의 고유 식별자 (예: 'board_123')
+// label : 새 게시판 이름
+// PUT 방식 : HTTP에서 '기존 데이터를 통째로 바꿀 때' 쓰는 방식입니다. (생성은 POST, 수정은 PUT)
+// 반환값: { ok: true/false, data: { key, label } 또는 { error: '...' } }
+export async function renameBoard(key, label) {
+  const res = await fetch(`/api/boards/${key}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label }),
+  })
+  return { ok: res.ok, data: await res.json() }
+}
+
+// 게시판을 삭제하는 함수입니다.
+// key : 삭제할 게시판의 고유 식별자 (예: 'board_123')
+// DELETE 방식 : HTTP에서 '데이터를 삭제할 때' 쓰는 방식입니다.
+// 반환값: { ok: true/false, data: { ok: true } 또는 { error: '...' } }
+export async function deleteBoard(key) {
+  const res = await fetch(`/api/boards/${key}`, { method: 'DELETE' })
+  return { ok: res.ok, data: await res.json() }
+}
+
 // ── 게시글 API ─────────────────────────────────────────────
 
 export async function fetchPostList(page, board) {

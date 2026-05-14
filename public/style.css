@@ -52,7 +52,8 @@ a { color: inherit; text-decoration: none; }
   font-weight: 600;
   transition: background .15s, color .15s;
 }
-.side-menu-item + .side-menu-item { margin-top: 6px; }
+/* board-item-wrap으로 감싸면서 이 규칙은 board-item-wrap에서 처리합니다. */
+/* .side-menu-item + .side-menu-item { margin-top: 6px; } */
 .side-menu-item:hover {
   background: #f0f6ff;
   color: #1a73e8;
@@ -61,6 +62,71 @@ a { color: inherit; text-decoration: none; }
   background: #e8f0fe;
   color: #1a73e8;
 }
+
+/* ── 게시판 항목 래퍼 ── */
+/* 각 게시판 메뉴 항목(RouterLink)과 편집 버튼을 가로로 나란히 배치하는 컨테이너입니다. */
+/* display: flex → 안에 있는 RouterLink와 버튼을 한 줄에 나란히 놓습니다. */
+.board-item-wrap {
+  display: flex;
+  align-items: stretch; /* 높이를 맞춥니다 */
+  border-radius: 6px;
+}
+/* 래퍼 사이 간격: 기존 side-menu-item + side-menu-item 선택자 대신 사용합니다. */
+.board-item-wrap + .board-item-wrap { margin-top: 6px; }
+/* 래퍼 안에 있는 RouterLink는 남은 공간을 모두 차지합니다. */
+.board-item-wrap .side-menu-item { flex: 1; min-width: 0; }
+
+/* ── 게시판 편집 버튼(연필 아이콘) ── */
+/* 사용자 추가 게시판에만 표시되며, 마우스를 올렸을 때만 나타납니다. */
+.board-edit-btn {
+  /* opacity: 0 → 기본 상태에서는 투명하게 숨깁니다. */
+  opacity: 0;
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  /* padding을 좌우만 줘서 클릭 영역은 확보하되 좁게 보이게 합니다. */
+  padding: 0 6px;
+  border-radius: 0 6px 6px 0;
+  font-size: .82rem;
+  flex-shrink: 0; /* 버튼이 줄어들지 않도록 고정합니다. */
+  transition: opacity .15s, background .15s, color .15s;
+}
+/* 게시판 항목에 마우스를 올리면 편집 버튼이 나타납니다. */
+.board-item-wrap:hover .board-edit-btn { opacity: 1; }
+/* 편집 버튼 자체에 마우스를 올리면 파란색으로 강조합니다. */
+.board-edit-btn:hover { background: #e8f0fe; color: #1a73e8; }
+
+/* ── 게시판 편집 폼 ── */
+/* 연필 버튼을 클릭했을 때 나타나는 이름 변경 + 삭제 폼입니다. */
+/* add-board-form과 같은 구조지만, 삭제 버튼이 추가됩니다. */
+.edit-board-form {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+/* 편집 폼의 확인/삭제/취소 버튼을 가로로 나란히 배치합니다. */
+.edit-board-actions {
+  display: flex;
+  gap: 6px;
+}
+/* 삭제 버튼: 빨간색 배경으로 '위험한 동작'임을 시각적으로 알려줍니다. */
+.board-delete-btn {
+  flex: 1;
+  padding: 6px 0;
+  background: #e74c3c; /* 빨간색 */
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity .15s;
+}
+.board-delete-btn:hover { opacity: .85; }
 
 /* ── 게시판 추가하기 버튼 ── */
 /* 사이드바 맨 아래에 있는 게시판 추가 버튼입니다. */
@@ -190,7 +256,10 @@ a { color: inherit; text-decoration: none; }
 .btn-sm { padding: 5px 12px; font-size: .82rem; }
 
 /* ── 게시글 테이블 ── */
-.post-table { width: 100%; border-collapse: collapse; }
+/* table-layout: fixed → 열 너비를 th에 지정한 값으로 고정합니다. */
+/* 기본값(auto)은 내용 길이에 따라 열이 늘어나서, 긴 댓글이 테이블 전체를 밀어낼 수 있습니다. */
+/* fixed로 설정하면 '제목' 열이 남은 공간을 차지하고, 내용이 길어도 셀 밖으로 나가지 않습니다. */
+.post-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .post-table thead tr {
   background: #f8f9fa;
   border-bottom: 2px solid #e0e0e0;
@@ -201,11 +270,16 @@ a { color: inherit; text-decoration: none; }
   color: #777;
   font-weight: 600;
   text-align: left;
+  /* white-space: nowrap → "파일" 같은 짧은 헤더 글자가 줄바꿈되지 않도록 합니다. */
+  white-space: nowrap;
+  /* overflow: hidden → 혹시 헤더가 너무 좁을 때 셀 밖으로 나가지 않도록 합니다. */
+  overflow: hidden;
 }
 .post-table th.center, .post-table td.center { text-align: center; }
 .post-table tbody tr { border-bottom: 1px solid #f0f0f0; transition: background .1s; }
 .post-table tbody tr:hover { background: #fafbff; }
-.post-table td { padding: 12px; font-size: .9rem; vertical-align: middle; }
+/* overflow: hidden → 제목 셀 안의 댓글이 길어도 셀 밖으로 나가지 않습니다. */
+.post-table td { padding: 12px; font-size: .9rem; vertical-align: middle; overflow: hidden; }
 
 .post-title-link { color: #1a73e8; font-weight: 500; }
 .post-title-link:hover { text-decoration: underline; }
@@ -223,6 +297,13 @@ a { color: inherit; text-decoration: none; }
   color: #555;
   text-decoration: none;
   cursor: pointer;
+  /* overflow: hidden → flex 컨테이너 자체도 내용이 밖으로 삐져나가지 않도록 막습니다. */
+  /* 안에 있는 .inline-comment-text의 text-overflow: ellipsis(...)이 작동하려면 */
+  /* 부모 컨테이너의 너비가 제한되어야 합니다. 이 속성이 없으면 컨테이너가 끝없이 늘어납니다. */
+  overflow: hidden;
+  /* min-width: 0 → flex 아이템은 기본적으로 내용만큼 최소 너비를 가집니다. */
+  /* 0으로 설정해야 부모 너비보다 작게 줄어들 수 있어서, 댓글 행이 테이블 셀을 벗어나지 않습니다. */
+  min-width: 0;
 }
 .inline-comment:hover {
   background: #eef2fb;
@@ -236,10 +317,14 @@ a { color: inherit; text-decoration: none; }
 }
 .inline-comment-text {
   flex: 1;
+  /* min-width: 0 이 없으면 flex 아이템이 내용 크기만큼 늘어나서 overflow: hidden이 작동하지 않습니다. */
+  /* 0으로 설정해야 아이템이 부모 너비 이하로 줄어들 수 있어서 텍스트가 제대로 잘립니다. */
+  min-width: 0;
   overflow: hidden;
-  /* pre-wrap: \n(줄바꿈 문자)을 실제 줄바꿈으로 표시해줌 */
-  /* nowrap이었을 때는 줄바꿈을 무시하고 한 줄로 합쳐버렸음 */
-  white-space: pre-wrap;
+  /* 게시판 목록에서는 댓글을 한 줄로 보여주고, 넘치면 ...으로 표시합니다. */
+  /* 댓글 상세(PostDetailView)에서는 이 스타일이 적용되지 않으므로 상세 화면은 영향 없습니다. */
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: #555;
 }
 .inline-comment-date {

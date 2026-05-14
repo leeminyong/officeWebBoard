@@ -5,8 +5,8 @@
 // computed() : 다른 ref 값이 바뀔 때 자동으로 재계산되는 읽기전용 값입니다.
 import { ref, computed } from 'vue'
 
-// 게시판 목록을 서버에서 가져오거나 추가하는 API 함수들입니다.
-import { fetchBoards as apiFetchBoards, addBoard as apiAddBoard } from '../api.js'
+// 게시판 목록을 서버에서 가져오거나 추가/수정/삭제하는 API 함수들입니다.
+import { fetchBoards as apiFetchBoards, addBoard as apiAddBoard, renameBoard as apiRenameBoard, deleteBoard as apiDeleteBoard } from '../api.js'
 
 // 기본 게시판 4개를 정의한 정적 데이터입니다.
 // 서버 응답이 오기 전에도 메뉴가 바로 표시되도록 미리 채워둡니다.
@@ -63,6 +63,41 @@ export function useBoards() {
     }
   }
 
+  // renameBoard : 사용자 추가 게시판의 이름을 바꾸는 함수입니다.
+  // key : 어떤 게시판을 바꿀지 (예: 'board_123'), label : 새 이름
+  async function renameBoard(key, label) {
+    try {
+      const result = await apiRenameBoard(key, label)
+      if (result.ok) {
+        // boards 배열에서 해당 key를 찾아 label만 바꿉니다.
+        // map() : 배열의 각 항목을 변환해서 새 배열을 만듭니다. (안드로이드의 stream().map()과 비슷)
+        // 삼항연산자 : b.key === key 이면 새 이름으로, 아니면 그대로 유지합니다.
+        boards.value = boards.value.map(b => b.key === key ? { ...b, label: result.data.label } : b)
+        return { ok: true }
+      }
+      return { ok: false, error: result.data?.error || '이름 변경에 실패했습니다.' }
+    } catch {
+      throw new Error('서버 통신 오류')
+    }
+  }
+
+  // deleteBoard : 사용자 추가 게시판과 그 안의 게시글을 모두 삭제하는 함수입니다.
+  // key : 삭제할 게시판의 식별자 (예: 'board_123')
+  async function deleteBoard(key) {
+    try {
+      const result = await apiDeleteBoard(key)
+      if (result.ok) {
+        // boards 배열에서 해당 key를 가진 항목을 제거합니다.
+        // filter() : 조건에 맞는 항목만 남긴 새 배열을 만듭니다. (안드로이드의 stream().filter()와 비슷)
+        boards.value = boards.value.filter(b => b.key !== key)
+        return { ok: true }
+      }
+      return { ok: false, error: result.data?.error || '게시판 삭제에 실패했습니다.' }
+    } catch {
+      throw new Error('서버 통신 오류')
+    }
+  }
+
   // 이 composable을 사용하는 컴포넌트에서 접근할 수 있도록 필요한 것들을 반환합니다.
-  return { boards, boardMap, addBoard }
+  return { boards, boardMap, addBoard, renameBoard, deleteBoard }
 }

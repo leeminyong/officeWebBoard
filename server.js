@@ -35,6 +35,10 @@ const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
 // 게시글 저장/조회 시 유효한 게시판인지 빠르게 확인하는 데 사용합니다.
 const BOARDS = new Set(db.prepare('SELECT key FROM boards').all().map(b => b.key));
 
+// 기본 게시판 목록입니다. 이 게시판들은 수정하거나 삭제할 수 없습니다.
+// 사용자가 추가한 게시판의 key는 'board_숫자' 형태여서 여기에 포함되지 않습니다.
+const DEFAULT_BOARD_KEYS = new Set(['project', 'maintenance', 'app-version', 'files']);
+
 app.use(express.json());
 const distDir = path.join(__dirname, 'dist');
 app.use(express.static(fs.existsSync(distDir) ? distDir : path.join(__dirname, 'public')));
@@ -74,6 +78,92 @@ app.post('/api/boards', (req, res) => {
   BOARDS.add(key);
 
   res.json({ key, label: trimmed });
+});
+
+// ── 게시판 이름 수정 ────────────────────────────────────────
+// 사용자가 추가한 게시판(key가 'board_'로 시작)의 이름을 바꿀 때 호출됩니다.
+// PUT /api/boards/:key → 특정 key의 게시판 이름을 label로 변경합니다.
+app.put('/api/boards/:key', (req, res) => {
+  const { key } = req.params;    // URL에서 게시판 key를 꺼냅니다. 예) /api/boards/board_123 → key = 'board_123'
+  const { label } = req.body;   // 요청 body에서 새 이름을 꺼냅니다.
+
+  // 기본 게시판은 수정할 수 없습니다.
+  if (DEFAULT_BOARD_KEYS.has(key))
+    return res.status(403).json({ error: '기본 게시판은 수정할 수 없습니다.' });
+
+  // 존재하지 않는 게시판이면 오류를 반환합니다.
+  if (!BOARDS.has(key))
+    return res.status(404).json({ error: '게시판을 찾을 수 없습니다.' });
+
+  // 이름이 비어 있으면 오류를 반환합니다.
+  if (!label?.trim())
+    return res.status(400).json({ error: '게시판 이름을 입력해주세요.' });
+
+  const trimmed = label.trim();
+
+  // 같은 이름이 이미 있는지 확인합니다. 자기 자신(key)은 제외하고 비교합니다.
+  const existing = db.prepare('SELECT key FROM boards WHERE label = ? AND key != ?').get(trimmed, key);
+  if (existing) return res.status(409).json({ error: '같은 이름의 게시판이 이미 있습니다.' });
+
+  // DB의 게시판 이름을 업데이트합니다.
+  db.prepare('UPDATE boards SET label = ? WHERE key = ?').run(trimmed, key);
+
+  res.json({ key, label: trimmed });
+});
+
+// ── 게시판 삭제 ────────────────────────────────────────────
+// 사용자가 추가한 게시판과 그 안의 게시글/댓글/첨부파일을 모두 삭제합니다.
+// DELETE /api/boards/:key → 해당 key의 게시판을 삭제합니다.
+app.delete('/api/boards/:key', (req, res) => {
+  const { key } = req.params;
+
+  // 기본 게시판은 삭제할 수 없습니다.
+  if (DEFAULT_BOARD_KEYS.has(key))
+    return res.status(403).json({ error: '기본 게시판은 삭제할 수 없습니다.' });
+
+  // 존재하지 않는 게시판이면 오류를 반환합니다.
+  if (!BOARDS.has(key))
+    return res.status(404).json({ error: '게시판을 찾을 수 없습니다.' });
+
+  // 해당 게시판의 모든 게시글 id를 가져옵니다.
+  const posts = db.prepare('SELECT id FROM posts WHERE board = ?').all(key);
+  const postIds = posts.map(p => p.id);
+
+  // 게시글이 하나 이상 있을 때만 관련 데이터를 삭제합니다.
+  if (postIds.length > 0) {
+    // SQL의 IN (?, ?, ...) 절에 쓸 ? 자리를 게시글 수만큼 만듭니다.
+    const postPH = postIds.map(() => '?').join(',');
+
+    // 게시글에 달린 댓글 id를 모두 가져옵니다.
+    const comments = db.prepare(`SELECT id FROM comments WHERE post_id IN (${postPH})`).all(...postIds);
+    const commentIds = comments.map(c => c.id);
+
+    if (commentIds.length > 0) {
+      const cmtPH = commentIds.map(() => '?').join(',');
+      // 댓글 첨부파일을 디스크에서도 삭제합니다.
+      const cmtFiles = db.prepare(`SELECT file_path FROM comment_files WHERE comment_id IN (${cmtPH})`).all(...commentIds);
+      cmtFiles.forEach(f => { try { fs.unlinkSync(f.file_path); } catch {} });
+      db.prepare(`DELETE FROM comment_files WHERE comment_id IN (${cmtPH})`).run(...commentIds);
+    }
+
+    // 게시글 첨부파일을 디스크에서도 삭제합니다.
+    const postFiles = db.prepare(`SELECT file_path FROM files WHERE post_id IN (${postPH})`).all(...postIds);
+    postFiles.forEach(f => { try { fs.unlinkSync(f.file_path); } catch {} });
+    db.prepare(`DELETE FROM files     WHERE post_id IN (${postPH})`).run(...postIds);
+
+    // 댓글을 삭제합니다.
+    db.prepare(`DELETE FROM comments  WHERE post_id IN (${postPH})`).run(...postIds);
+
+    // 게시글을 삭제합니다.
+    db.prepare('DELETE FROM posts WHERE board = ?').run(key);
+  }
+
+  // 게시판 자체를 DB에서 삭제합니다.
+  db.prepare('DELETE FROM boards WHERE key = ?').run(key);
+  // 서버 메모리의 BOARDS Set에서도 제거합니다.
+  BOARDS.delete(key);
+
+  res.json({ ok: true });
 });
 
 // ── 게시글 목록 (페이지네이션) ──────────────────────────────
