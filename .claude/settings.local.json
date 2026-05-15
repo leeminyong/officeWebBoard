@@ -12,7 +12,13 @@
       "Bash(curl -s -X POST http://localhost:3000/api/boards -H \"Content-Type: application/json\" -d \"{\\\\\"label\\\\\":\\\\\"테스트\\\\\"}\")",
       "Bash(curl -s http://localhost:3000/api/boards)",
       "Bash(curl -s -X POST http://localhost:3000/api/boards -H \"Content-Type: application/json\" -d \"{\\\\\"label\\\\\":\\\\\"공지사항\\\\\"}\")",
-      "Bash(node -e \"const db = require\\('./database'\\); db.prepare\\(\\\\\"DELETE FROM boards WHERE key LIKE 'board_%'\\\\\"\\).run\\(\\); console.log\\('삭제 완료:', db.prepare\\('SELECT * FROM boards'\\).all\\(\\)\\)\")"
+      "Bash(node -e \"const db = require\\('./database'\\); db.prepare\\(\\\\\"DELETE FROM boards WHERE key LIKE 'board_%'\\\\\"\\).run\\(\\); console.log\\('삭제 완료:', db.prepare\\('SELECT * FROM boards'\\).all\\(\\)\\)\")",
+      "Bash(cmd.exe /c \"dir D:\\\\\\\\\")",
+      "Bash(cmd.exe /c dir D:\\\\\\\\)",
+      "Bash(cmd.exe /c \"dir C:\\\\Users\\\\USER\\\\.continue /s\")",
+      "Bash(Start-Sleep -Seconds 2)",
+      "Bash(Invoke-WebRequest -Uri \"http://localhost:3000/api/posts?board=project&search=test\" -UseBasicParsing)",
+      "Bash(Select-Object -ExpandProperty StatusCode)"
     ],
     "additionalDirectories": [
       "d:\\officeWebBoard\\src"

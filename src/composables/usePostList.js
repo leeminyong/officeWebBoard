@@ -35,6 +35,10 @@ export function usePostList() {
   // pageInfo : 현재 페이지, 전체 글 수, 총 페이지 수를 담는 객체입니다.
   const pageInfo = ref({ total: 0, page: 1, totalPages: 1 })
 
+  // searchKeyword : 사용자가 입력 중인 검색어를 저장하는 반응형 변수입니다.
+  // Android의 EditText에 바인딩된 LiveData<String>과 비슷합니다.
+  const searchKeyword = ref('')
+
   // currentBoard : URL의 ?board= 값을 읽어서 현재 게시판 종류를 반환합니다.
   // boardMap.value에 없는 값이 오면 기본값 'project'를 사용합니다.
   // 사용자가 추가한 게시판도 boardMap에 포함되므로 동적으로 인식합니다.
@@ -47,8 +51,9 @@ export function usePostList() {
     // try/catch : 오류가 발생했을 때 앱이 멈추지 않고 catch 블록을 실행합니다.
     try {
       // 서버에서 게시글 목록과 페이지 정보를 받아옵니다.
+      // searchKeyword.value : 현재 검색어를 함께 전달합니다. 비어 있으면 전체 목록을 가져옵니다.
       // 받아온 데이터 구조 예시: { posts: [...], pagination: { total, page, totalPages } }
-      const serverResponse = await fetchPostList(pageNumber, currentBoard.value)
+      const serverResponse = await fetchPostList(pageNumber, currentBoard.value, searchKeyword.value)
 
       // [...serverResponse.posts] : 원본 배열을 복사합니다. 원본을 직접 수정하지 않기 위해서입니다.
       // .sort((postA, postB) => ...) : 배열을 정렬합니다. 반환값이 음수면 postA가 앞, 양수면 postB가 앞에 옵니다.
@@ -81,6 +86,18 @@ export function usePostList() {
     }
   }
 
+  // doSearch : 검색 버튼을 눌렀을 때 1페이지부터 다시 검색 결과를 불러오는 함수입니다.
+  // 검색어가 바뀌면 항상 1페이지부터 시작해야 하므로 loadPosts(1)을 호출합니다.
+  function doSearch() {
+    loadPosts(1)
+  }
+
+  // clearSearch : 검색어를 지우고 전체 목록으로 돌아오는 함수입니다.
+  function clearSearch() {
+    searchKeyword.value = ''
+    loadPosts(1)
+  }
+
   // goToWrite : 글쓰기 페이지로 이동하는 함수입니다.
   function goToWrite() {
     // 글쓰기 페이지로 이동할 때 URL에 붙일 게시판 정보입니다.
@@ -102,5 +119,6 @@ export function usePostList() {
   // 이 composable을 사용하는 컴포넌트(View)에서 접근할 수 있도록 필요한 것들을 반환합니다.
   // Android ViewModel에서 LiveData나 함수를 외부에 공개하는 것과 같습니다.
   // 주의: 여기서 반환하는 이름(postList, pageInfo 등)이 View에서 사용하는 이름이 됩니다.
-  return { postList, pageInfo, currentBoard, loadPosts, goToWrite, goToPost }
+  // searchKeyword, doSearch, clearSearch 도 View에서 사용할 수 있도록 함께 반환합니다.
+  return { postList, pageInfo, currentBoard, loadPosts, goToWrite, goToPost, searchKeyword, doSearch, clearSearch }
 }

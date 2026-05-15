@@ -46,8 +46,20 @@ export async function deleteBoard(key) {
 
 // ── 게시글 API ─────────────────────────────────────────────
 
-export async function fetchPostList(page, board) {
-  const res = await fetch(`/api/posts?page=${page}&board=${board}`)
+// fetchPostList : 서버에서 게시글 목록을 가져오는 함수입니다.
+// page   : 가져올 페이지 번호 (1부터 시작)
+// board  : 게시판 종류 (예: 'project', 'maintenance')
+// search : 검색어. 없으면 빈 문자열('')을 기본값으로 사용합니다.
+//          URLSearchParams를 쓰면 한글이나 특수문자가 자동으로 URL 안전한 문자로 변환됩니다.
+//          (예: '유지 보수' → '%EC%9C%A0%EC%A7%80+%EB%B3%B4%EC%88%98')
+export async function fetchPostList(page, board, search = '') {
+  // URLSearchParams : URL 쿼리 문자열을 안전하게 만들어 주는 브라우저 내장 도구입니다.
+  // 안드로이드의 Uri.Builder().appendQueryParameter()와 비슷한 역할입니다.
+  const params = new URLSearchParams({ page, board })
+  // 검색어가 있을 때만 search 파라미터를 추가합니다.
+  // trim() : 앞뒤 공백을 제거합니다.
+  if (search.trim()) params.append('search', search.trim())
+  const res = await fetch(`/api/posts?${params}`)
   return res.json()
 }
 

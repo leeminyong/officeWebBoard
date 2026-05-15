@@ -59,6 +59,25 @@
 
       <!-- Pagination 컴포넌트에 pageInfo를 전달하고, 페이지 이동 이벤트를 받아 loadPosts를 호출합니다. -->
       <Pagination :pagination="pageInfo" @go="loadPosts" />
+
+      <!-- ── 검색 영역 ──────────────────────────────────────── -->
+      <!-- 게시판 하단에 키워드 검색창을 보여줍니다. -->
+      <!-- div.search-bar : 검색창과 버튼을 가로로 나란히 배치하는 컨테이너입니다. -->
+      <div class="search-bar">
+        <!-- v-model="searchKeyword" : 입력창의 값과 searchKeyword 변수를 양방향으로 연결합니다.
+             안드로이드의 EditText에 TextWatcher를 달아 LiveData를 업데이트하는 것과 같습니다. -->
+        <!-- @keyup.enter : 엔터 키를 눌렀을 때 doSearch()를 실행합니다.
+             안드로이드의 setOnEditorActionListener()와 비슷합니다. -->
+        <input
+          v-model="searchKeyword"
+          class="search-input"
+          type="text"
+          placeholder="검색어를 입력하세요"
+          @keyup.enter="doSearch"
+        />
+        <!-- 검색 버튼: 클릭하면 doSearch()를 호출해서 1페이지부터 검색 결과를 불러옵니다. -->
+        <button class="btn btn-primary search-btn" @click="doSearch">🔍 찾기</button>
+      </div>
     </div>
   </div>
 </template>
@@ -95,10 +114,14 @@ function stripUrls(text) {
 }
 // usePostList()에서 필요한 상태와 함수를 가져옵니다.
 // { } 안에 쓴 이름은 usePostList.js의 return 에서 반환한 이름과 일치해야 합니다.
-const { postList, pageInfo, currentBoard, loadPosts, goToWrite, goToPost } = usePostList()
+// searchKeyword : 검색 입력창에 바인딩되는 검색어 변수입니다.
+// doSearch      : 검색 버튼 클릭 시 1페이지부터 검색 결과를 불러오는 함수입니다.
+// clearSearch   : 검색어를 비우고 전체 목록으로 돌아오는 함수입니다.
+const { postList, pageInfo, currentBoard, loadPosts, goToWrite, goToPost, searchKeyword, doSearch, clearSearch } = usePostList()
 
 // onMounted : 화면이 처음 그려질 때 1페이지 게시글을 불러옵니다. (Android의 onCreate()와 비슷)
 onMounted(() => loadPosts(1))
-// watch : route.query.board 값이 바뀔 때(게시판 전환 시) 1페이지부터 다시 불러옵니다.
-watch(() => route.query.board, () => loadPosts(1))
+// watch : route.query.board 값이 바뀔 때(게시판 전환 시) 검색어를 초기화하고 1페이지부터 다시 불러옵니다.
+// 다른 게시판으로 이동했을 때 이전 게시판의 검색어가 남아 있으면 어색하기 때문에 초기화합니다.
+watch(() => route.query.board, () => clearSearch())
 </script>

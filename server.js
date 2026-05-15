@@ -166,18 +166,34 @@ app.delete('/api/boards/:key', (req, res) => {
   res.json({ ok: true });
 });
 
-// ── 게시글 목록 (페이지네이션) ──────────────────────────────
+// ── 게시글 목록 (페이지네이션 + 검색) ───────────────────────
 app.get('/api/posts', (req, res) => {
   const board  = getBoard(req.query.board);
   const page   = Math.max(1, parseInt(req.query.page) || 1);
   const limit  = 10;
   const offset = (page - 1) * limit;
 
-  const { count } = db.prepare('SELECT COUNT(*) as count FROM posts WHERE board = ?').get(board);
-  const posts = db.prepare(`
+  // req.query.search : URL에 ?search=키워드 형태로 넘어오는 검색어입니다.
+  // trim() : 앞뒤 공백을 제거합니다. 사용자가 실수로 공백만 입력한 경우를 막습니다.
+  // || '' : search 파라미터가 없으면 빈 문자열('')을 기본값으로 사용합니다.
+  const searchRaw = (req.query.search || '').trim();
+
+  // 검색어가 있을 때만 SQL LIKE 조건을 추가합니다.
+  // LIKE '%검색어%' : 제목이나 내용 어디든 검색어가 포함된 글을 찾습니다.
+  // % 는 SQL 와일드카드로, '어떤 문자든 0개 이상'을 의미합니다.
+  const searchParam = searchRaw ? `%${searchRaw}%` : null;
+
+  // 검색어 유무에 따라 WHERE 조건이 달라집니다.
+  // searchParam이 있으면 제목(title) 또는 내용(content)에 검색어가 포함된 글만 조회합니다.
+  const countSql = searchParam
+    ? 'SELECT COUNT(*) as count FROM posts WHERE board = ? AND (title LIKE ? OR content LIKE ?)'
+    : 'SELECT COUNT(*) as count FROM posts WHERE board = ?';
+  const countArgs = searchParam ? [board, searchParam, searchParam] : [board];
+  const { count } = db.prepare(countSql).get(...countArgs);
+
+  // 목록 조회 SQL도 검색 조건을 함께 적용합니다.
+  const listSql = `
     SELECT p.id, p.title, p.author, p.created_at, p.updated_at,
-           -- SQL 주석 문법: -- 뒤의 글은 설명입니다. 최신 글이 맨 위에 오도록 번호 계산도 최신순 기준으로 바꿉니다.
-           -- SQL 주석 문법: -- 뒤의 글은 서버가 실행하지 않는 설명입니다. 최신글을 위에 보이게 하려고 작성일이 늦은 글부터 번호를 매깁니다.
            ROW_NUMBER() OVER (ORDER BY p.created_at DESC, p.id DESC) AS row_num,
            COUNT(DISTINCT c.id) AS comment_count,
            COUNT(DISTINCT f.id) AS file_count
@@ -185,12 +201,16 @@ app.get('/api/posts', (req, res) => {
     LEFT JOIN comments c ON c.post_id = p.id
     LEFT JOIN files    f ON f.post_id = p.id
     WHERE p.board = ?
+    ${searchParam ? 'AND (p.title LIKE ? OR p.content LIKE ?)' : ''}
     GROUP BY p.id
-    -- SQL 주석 문법: DESC는 큰 번호가 먼저 오게 하는 정렬입니다. 새 글일수록 id가 크기 때문에 모든 게시판이 최신순으로 보입니다.
-    -- SQL 주석 문법: ORDER BY는 서버가 게시글을 어떤 순서로 보낼지 정합니다. 작성일이 가장 최근인 글이 목록 맨 위에 오도록 내림차순으로 정렬합니다.
     ORDER BY p.created_at DESC, p.id DESC
     LIMIT ? OFFSET ?
-  `).all(board, limit, offset);
+  `;
+  // 검색어 유무에 따라 SQL에 넘길 인자 배열이 달라집니다.
+  const listArgs = searchParam
+    ? [board, searchParam, searchParam, limit, offset]
+    : [board, limit, offset];
+  const posts = db.prepare(listSql).all(...listArgs);
 
   if (posts.length > 0) {
     const ids = posts.map(p => p.id);
