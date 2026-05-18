@@ -55,27 +55,13 @@ export function usePostList() {
       // 받아온 데이터 구조 예시: { posts: [...], pagination: { total, page, totalPages } }
       const serverResponse = await fetchPostList(pageNumber, currentBoard.value, searchKeyword.value)
 
-      // [...serverResponse.posts] : 원본 배열을 복사합니다. 원본을 직접 수정하지 않기 위해서입니다.
-      // .sort((postA, postB) => ...) : 배열을 정렬합니다. 반환값이 음수면 postA가 앞, 양수면 postB가 앞에 옵니다.
-      postList.value = [...serverResponse.posts].sort((postA, postB) => {
-        // 제목에 '완료'가 포함된 글은 맨 아래로 보냅니다.
-        // includes('완료') : 문자열 안에 '완료'가 있으면 true를 반환하는 함수입니다.
-        // ? 1 : 0 은 삼항연산자입니다. 조건이 true면 1, false면 0을 저장합니다.
-        const isPostACompleted = postA.title.includes('완료') ? 1 : 0
-        const isPostBCompleted = postB.title.includes('완료') ? 1 : 0
-
-        // 완료 여부가 다르면 완료 글(1)이 뒤로 가도록 정렬합니다.
-        // isPostACompleted - isPostBCompleted 가 양수이면 postA가 뒤로 이동합니다.
-        if (isPostACompleted !== isPostBCompleted) return isPostACompleted - isPostBCompleted
-
-        // 완료 여부가 같은 글끼리는 작성일 기준 최신순으로 정렬합니다.
-        // localeCompare : 두 문자열을 사전 순으로 비교합니다. postB가 크면 양수를 반환해서 postB가 앞에 옵니다.
-        const dateComparisonResult = String(postB.created_at).localeCompare(String(postA.created_at))
-
-        // 날짜도 같으면 id가 큰 것(나중에 작성된 글)이 앞에 오도록 합니다.
-        // || : 앞의 값이 0(falsy)이면 뒤의 값을 사용하는 OR 연산자입니다.
-        return dateComparisonResult || postB.id - postA.id
-      })
+      // 서버에서 이미 올바른 순서로 정렬된 결과를 그대로 사용합니다.
+      // 정렬 기준은 server.js의 SQL에서 처리합니다:
+      //   1) 제목에 '완료'가 없는 글 먼저 (최신순)
+      //   2) 제목에 '완료'가 있는 글은 맨 뒤 (최신순)
+      // 여기서 다시 정렬하면 현재 페이지 안에서만 정렬되어 '완료' 글이
+      // 마지막 페이지가 아닌 현재 페이지의 맨 아래로만 내려가는 문제가 생깁니다.
+      postList.value = serverResponse.posts
 
       // 서버에서 받은 페이지 정보를 저장합니다.
       pageInfo.value = serverResponse.pagination

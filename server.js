@@ -192,9 +192,16 @@ app.get('/api/posts', (req, res) => {
   const { count } = db.prepare(countSql).get(...countArgs);
 
   // 목록 조회 SQL도 검색 조건을 함께 적용합니다.
+  // ORDER BY 설명:
+  //   1순위: 제목에 '완료'가 포함된 글은 1, 아니면 0 → 0이 먼저(위), 1이 나중(아래)에 옴
+  //          CASE WHEN ... THEN ... ELSE ... END : SQL의 if/else 문법입니다.
+  //          LIKE '%완료%' : 제목 어디에든 '완료'가 들어있으면 true입니다.
+  //   2순위: 같은 그룹 안에서는 작성일 최신순으로 정렬합니다.
+  //   3순위: 날짜도 같으면 id가 큰 것(나중에 쓴 글)이 위로 옵니다.
+  // 이 정렬이 LIMIT/OFFSET(페이징)보다 먼저 적용되기 때문에,
+  // '완료' 글은 전체 글 중 맨 마지막 페이지 하단에 위치하게 됩니다.
   const listSql = `
     SELECT p.id, p.title, p.author, p.created_at, p.updated_at,
-           ROW_NUMBER() OVER (ORDER BY p.created_at DESC, p.id DESC) AS row_num,
            COUNT(DISTINCT c.id) AS comment_count,
            COUNT(DISTINCT f.id) AS file_count
     FROM posts p
@@ -203,7 +210,9 @@ app.get('/api/posts', (req, res) => {
     WHERE p.board = ?
     ${searchParam ? 'AND (p.title LIKE ? OR p.content LIKE ?)' : ''}
     GROUP BY p.id
-    ORDER BY p.created_at DESC, p.id DESC
+    ORDER BY CASE WHEN p.title LIKE '%완료%' THEN 1 ELSE 0 END ASC,
+             p.created_at DESC,
+             p.id DESC
     LIMIT ? OFFSET ?
   `;
   // 검색어 유무에 따라 SQL에 넘길 인자 배열이 달라집니다.
