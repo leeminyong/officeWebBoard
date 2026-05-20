@@ -18,7 +18,11 @@
       "Bash(cmd.exe /c \"dir C:\\\\Users\\\\USER\\\\.continue /s\")",
       "Bash(Start-Sleep -Seconds 2)",
       "Bash(Invoke-WebRequest -Uri \"http://localhost:3000/api/posts?board=project&search=test\" -UseBasicParsing)",
-      "Bash(Select-Object -ExpandProperty StatusCode)"
+      "Bash(Select-Object -ExpandProperty StatusCode)",
+      "Bash(ls \"C:\\\\Program Files\\\\MySQL\\\\MySQL Workbench 8.0 CE\\\\data\")",
+      "Read(//c/Program Files/MySQL/MySQL Workbench 8.0 CE/data/**)",
+      "Bash(ls \"C:\\\\Program Files\\\\MySQL\")",
+      "Read(//c/Program Files/MySQL/**)"
     ],
     "additionalDirectories": [
       "d:\\officeWebBoard\\src"
