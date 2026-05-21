@@ -83,6 +83,18 @@ export function deletePost(postId) {
   return fetch(`/api/posts/${postId}`, { method: 'DELETE' })
 }
 
+// movePost : 게시글을 다른 게시판으로 이동하는 함수입니다.
+// targetBoard : 이동할 게시판 key (예: 'maintenance-done')
+// PATCH 방식으로 요청하면 서버가 해당 글의 board 값을 변경합니다.
+export async function movePost(postId, targetBoard) {
+  const res = await fetch(`/api/posts/${postId}/move`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ board: targetBoard }),
+  })
+  return { ok: res.ok, data: await res.json() }
+}
+
 // togglePin : 게시글 고정 상태를 서버에서 전환(고정 ↔ 해제)하는 함수입니다.
 // PATCH 방식으로 요청하면 서버가 is_pinned 값을 0↔1로 바꾸고 결과를 돌려줍니다.
 // 반환값 예시: { is_pinned: 1 } 또는 { is_pinned: 0 }

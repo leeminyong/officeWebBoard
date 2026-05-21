@@ -37,7 +37,7 @@ const BOARDS = new Set(db.prepare('SELECT key FROM boards').all().map(b => b.key
 
 // 기본 게시판 목록입니다. 이 게시판들은 수정하거나 삭제할 수 없습니다.
 // 사용자가 추가한 게시판의 key는 'board_숫자' 형태여서 여기에 포함되지 않습니다.
-const DEFAULT_BOARD_KEYS = new Set(['project', 'maintenance', 'app-version', 'files']);
+const DEFAULT_BOARD_KEYS = new Set(['project', 'maintenance', 'maintenance-done', 'app-version', 'files']);
 
 app.use(express.json());
 const distDir = path.join(__dirname, 'dist');
@@ -263,9 +263,11 @@ app.get('/api/posts/:id', (req, res) => {
 // 글 등록 때 본문 데이터와 첨부파일을 한 번에 받기 위해 multipart 업로드로 처리합니다.
 app.post('/api/posts', upload.array('files', 20), (req, res) => {
   const { title, content, author } = req.body;
-  const board = getBoard(req.body.board);
   if (!title?.trim() || !content?.trim())
     return res.status(400).json({ error: '제목과 내용은 필수입니다.' });
+
+  // resolveBoard() : 유지보수 게시판에서 제목에 '완료'가 포함된 글은 유지보수(완료) 게시판으로 자동 배정합니다.
+  const board = resolveBoard(getBoard(req.body.board), title.trim());
 
   const result = db.prepare('INSERT INTO posts (title, content, author, board) VALUES (?, ?, ?, ?)')
     .run(title.trim(), content.trim(), (author || '익명').trim(), board);
@@ -282,10 +284,16 @@ app.put('/api/posts/:id', upload.array('files', 20), (req, res) => {
   if (!post) return res.status(404).json({ error: '게시글을 찾을 수 없습니다.' });
 
   const { title, content, author, deleteFileIds } = req.body;
+
+  // 수정 후 제목을 기준으로 게시판을 다시 결정합니다.
+  // 예) 유지보수 글 제목에 '완료' 추가 → 유지보수(완료)로 이동
+  //     유지보수(완료) 글 제목에서 '완료' 제거 → 유지보수로 복귀
+  const newBoard = resolveBoard(post.board, title.trim());
+
   db.prepare(`
-    UPDATE posts SET title = ?, content = ?, author = ?,
+    UPDATE posts SET title = ?, content = ?, author = ?, board = ?,
     updated_at = datetime('now','localtime') WHERE id = ?
-  `).run(title.trim(), content.trim(), (author || '익명').trim(), req.params.id);
+  `).run(title.trim(), content.trim(), (author || '익명').trim(), newBoard, req.params.id);
 
   // 수정 화면에서 삭제 표시한 기존 첨부파일은 실제 파일과 DB 기록을 같이 지웁니다.
   if (deleteFileIds) {
@@ -336,6 +344,21 @@ app.patch('/api/posts/:id/pin', (req, res) => {
 
   // 변경된 고정 상태를 응답으로 돌려줍니다. 프론트엔드에서 화면을 바로 업데이트할 때 씁니다.
   res.json({ is_pinned: newValue });
+});
+
+// ── 게시글 게시판 이동 ─────────────────────────────────────
+// 완료 버튼을 눌렀을 때처럼, 글의 게시판을 직접 지정해서 옮길 때 사용합니다.
+// req.body.board : 이동할 대상 게시판 key (예: 'maintenance-done')
+app.patch('/api/posts/:id/move', (req, res) => {
+  const post = db.prepare('SELECT id FROM posts WHERE id = ?').get(req.params.id);
+  if (!post) return res.status(404).json({ error: '게시글을 찾을 수 없습니다.' });
+
+  // 이동할 게시판이 실제로 존재하는 게시판인지 확인합니다.
+  const targetBoard = req.body.board;
+  if (!BOARDS.has(targetBoard)) return res.status(400).json({ error: '존재하지 않는 게시판입니다.' });
+
+  db.prepare('UPDATE posts SET board = ? WHERE id = ?').run(targetBoard, req.params.id);
+  res.json({ board: targetBoard });
 });
 
 // ── 댓글 작성 ─────────────────────────────────────────────
@@ -469,6 +492,17 @@ function deleteFile(fileId) {
 
 function getBoard(board) {
   return BOARDS.has(board) ? board : 'project';
+}
+
+// resolveBoard : 게시판 key와 제목을 받아 실제로 저장할 게시판 key를 결정합니다.
+// 유지보수 게시판에서만 제목에 '완료'가 포함되면 유지보수(완료)로 자동 이동합니다.
+// - 유지보수 게시판 + 제목에 '완료' 포함 → 유지보수(완료)로 이동
+// - 유지보수(완료) 게시판에 있는 글은 제목과 무관하게 그대로 유지 (완료 버튼으로 옮긴 글이 수정 시 되돌아가는 문제 방지)
+// - 그 외 게시판은 변경 없음
+function resolveBoard(board, title) {
+  // includes() : 문자열 안에 특정 단어가 들어있는지 확인합니다. (안드로이드의 String.contains()와 같습니다)
+  if (board === 'maintenance' && title.includes('완료')) return 'maintenance-done';
+  return board;
 }
 
 // Vue Router history mode 를 위해 API/업로드 외 경로는 index.html 로 fallback

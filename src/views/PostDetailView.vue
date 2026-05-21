@@ -31,8 +31,17 @@
       </div>
 
       <div class="action-bar" style="margin-top:24px">
-        <button class="btn btn-secondary" @click="goToList">← 목록</button>
+        <div>
+          <button class="btn btn-secondary" @click="goToList">← 목록</button>
+        </div>
         <div class="right">
+          <!-- 완료 버튼: '유지보수' 게시판에서만 고정 버튼 왼쪽에 표시됩니다. -->
+          <!-- currentBoard === 'maintenance' : 현재 게시판이 유지보수일 때만 버튼을 보여줍니다. -->
+          <button
+            v-if="currentBoard === 'maintenance'"
+            class="btn btn-secondary btn-sm"
+            @click="handleComplete"
+          >완료</button>
           <!-- 고정 버튼: 누를 때마다 고정/해제가 전환됩니다. -->
           <!-- post.is_pinned가 1(고정 상태)이면 '고정 해제', 0이면 '고정' 텍스트를 보여줍니다. -->
           <!-- v-if / v-else: 조건에 따라 두 버튼 중 하나만 화면에 그립니다. -->
@@ -129,8 +138,8 @@ import { isImage, formatSize } from '../utils.js'
 
 const route = useRoute()
 const {
-  post, cmtFiles, cmtContent, editingCommentId, editingCommentContent,
-  loadPost, handleDeletePost, handleTogglePin, submitComment, startEditComment, cancelEditComment, submitEditComment, handleDeleteComment,
+  post, currentBoard, cmtFiles, cmtContent, editingCommentId, editingCommentContent,
+  loadPost, handleDeletePost, handleTogglePin, handleComplete, submitComment, startEditComment, cancelEditComment, submitEditComment, handleDeleteComment,
   handleDeletePostFile, handleDeleteCommentFile,
   downloadFile, downloadCommentFile, addCmtFiles, removeCmtFile, goToEdit, goToList,
 } = usePostDetail()

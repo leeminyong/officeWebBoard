@@ -65,17 +65,33 @@ if (!postColumns.includes('is_pinned')) {
   db.exec("ALTER TABLE posts ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0");
 }
 
-// boards 테이블이 비어 있으면 기본 게시판 4개를 넣습니다.
+// boards 테이블이 비어 있으면 기본 게시판 5개를 넣습니다.
 // 서버를 처음 실행하거나 DB를 새로 만들 때 한 번만 실행됩니다.
 const boardCount = db.prepare('SELECT COUNT(*) as count FROM boards').get().count;
 if (boardCount === 0) {
   // prepare() : 같은 SQL을 여러 번 실행할 때 미리 준비해두면 빠릅니다. (안드로이드의 PreparedStatement와 비슷)
   const insertBoard = db.prepare('INSERT INTO boards (key, label, sort_order) VALUES (?, ?, ?)');
-  // 기존 게시판 4개를 순서대로 삽입합니다.
-  insertBoard.run('project',     '프로젝트',   0);
-  insertBoard.run('maintenance', '유지보수',   1);
-  insertBoard.run('app-version', '앱 버전관리', 2);
-  insertBoard.run('files',       '파일',       3);
+  // 기본 게시판 5개를 순서대로 삽입합니다.
+  // maintenance-done : '유지보수(완료)' 게시판입니다. 유지보수 게시판 바로 아래에 위치합니다.
+  insertBoard.run('project',          '프로젝트',      0);
+  insertBoard.run('maintenance',      '유지보수',      1);
+  insertBoard.run('maintenance-done', '유지보수(완료)', 2);
+  insertBoard.run('app-version',      '앱 버전관리',   3);
+  insertBoard.run('files',            '파일',          4);
+}
+
+// 기존 DB에 maintenance-done 게시판이 없으면 추가합니다.
+// 이미 게시판이 4개 있는 상태에서 서버를 업데이트한 경우를 위한 처리입니다.
+const maintenanceDone = db.prepare("SELECT key FROM boards WHERE key = 'maintenance-done'").get();
+if (!maintenanceDone) {
+  // 유지보수(완료)가 '유지보수' 바로 아래에 오도록 기존 게시판들의 순서를 조정합니다.
+  // sort_order가 2 이상인 게시판(app-version, files 등)을 1씩 뒤로 밉니다.
+  db.exec("UPDATE boards SET sort_order = sort_order + 1 WHERE sort_order >= 2");
+  db.prepare("INSERT INTO boards (key, label, sort_order) VALUES ('maintenance-done', '유지보수(완료)', 2)").run();
+
+  // 기존에 유지보수 게시판에 있던 '완료' 글들을 유지보수(완료) 게시판으로 일괄 이동합니다.
+  // LIKE '%완료%' : 제목 어디에든 '완료'가 포함된 글을 찾습니다.
+  db.exec("UPDATE posts SET board = 'maintenance-done' WHERE board = 'maintenance' AND title LIKE '%완료%'");
 }
 
 module.exports = db;

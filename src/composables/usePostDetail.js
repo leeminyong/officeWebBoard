@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { fetchPost, deletePost as apiDeletePost, createComment, updateComment, deleteComment as apiDeleteComment, deletePostFile, deleteCommentFile, togglePin as apiTogglePin } from '../api.js'
+import { fetchPost, deletePost as apiDeletePost, createComment, updateComment, deleteComment as apiDeleteComment, deletePostFile, deleteCommentFile, togglePin as apiTogglePin, movePost as apiMovePost } from '../api.js'
 import { useToast } from './useToast.js'
 import { boardMeta } from '../board.js'
 import { downloadFromUrl } from '../utils.js'
@@ -148,6 +148,24 @@ export function usePostDetail() {
     }
   }
 
+  // handleComplete : '완료' 버튼을 눌렀을 때 실행되는 함수입니다. (ViewModel 레이어)
+  // 현재 글을 '유지보수(완료)' 게시판(maintenance-done)으로 이동하고,
+  // 이동 완료 후 '유지보수(완료)' 게시판 목록 화면으로 이동합니다.
+  async function handleComplete() {
+    if (!confirm('이 게시글을 완료 처리하시겠습니까?\n유지보수(완료) 게시판으로 이동됩니다.')) return
+    const res = await apiMovePost(route.params.id, 'maintenance-done')
+    if (res.ok) {
+      showToast('완료 처리되었습니다.')
+      // 800ms 후 유지보수(완료) 게시판 목록으로 이동합니다.
+      // setTimeout : 일정 시간(밀리초) 후에 코드를 실행합니다. 토스트 메시지를 잠깐 보여주기 위해 사용합니다.
+      setTimeout(() => {
+        router.push({ path: '/', query: { board: 'maintenance-done' } })
+      }, 800)
+    } else {
+      showToast('완료 처리 실패', true)
+    }
+  }
+
   function goToEdit() {
     router.push({ path: `/posts/${route.params.id}/edit`, query: { board: currentBoard.value } })
   }
@@ -159,7 +177,7 @@ export function usePostDetail() {
 
   return {
     post, currentBoard, cmtFiles, cmtContent, editingCommentId, editingCommentContent,
-    loadPost, handleDeletePost, handleTogglePin, submitComment, startEditComment, cancelEditComment, submitEditComment, handleDeleteComment,
+    loadPost, handleDeletePost, handleTogglePin, handleComplete, submitComment, startEditComment, cancelEditComment, submitEditComment, handleDeleteComment,
     handleDeletePostFile, handleDeleteCommentFile,
     downloadFile, downloadCommentFile, addCmtFiles, removeCmtFile, goToEdit, goToList,
   }
