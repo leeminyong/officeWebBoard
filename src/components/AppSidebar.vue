@@ -1,5 +1,5 @@
 <template>
-  <!-- aside : 화면 왼쪽에 고정된 사이드바 영역입니다. (HTML 주석 문법: <!-- 내용 -->) -->
+  <!-- aside : 화면 왼쪽에 고정된 사이드바 영역입니다. HTML 주석은 이렇게 작성합니다. -->
   <aside class="side-menu" aria-label="주요 메뉴">
 
     <!-- v-for : boards 배열을 순서대로 반복해서 메뉴 항목을 만듭니다. -->

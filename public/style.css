@@ -25,7 +25,10 @@ a { color: inherit; text-decoration: none; }
   gap: 12px;
   box-shadow: 0 2px 6px rgba(0,0,0,.2);
 }
-.site-header h1 { font-size: 1.2rem; font-weight: 700; cursor: pointer; }
+/* clamp(최솟값, 유동값, 최댓값): 화면 너비에 따라 글자 크기가 자연스럽게 변합니다. */
+/* 2.5vw = 화면 너비의 2.5% → 작은 화면에선 작아지고, 큰 화면에선 커집니다. */
+/* 최소 1rem(16px) ~ 최대 1.2rem(19px) 사이에서 유동적으로 변합니다. */
+.site-header h1 { font-size: clamp(1rem, 2.5vw, 1.2rem); font-weight: 700; cursor: pointer; }
 .site-header h1:hover { opacity: .85; }
 
 /* ── 왼쪽 메뉴 ── */
@@ -214,7 +217,9 @@ a { color: inherit; text-decoration: none; }
 .container {
   max-width: 920px;
   margin: 32px auto 32px calc(200px + ((100vw - 200px - 920px) / 2));
-  padding: 0 16px;
+  /* 좌우 안쪽 여백을 유동적으로 조절합니다. */
+  /* 최소 8px ~ 최대 16px: 좁은 화면에서 콘텐츠가 화면 끝에 붙지 않습니다. */
+  padding: 0 clamp(8px, 2vw, 16px);
 }
 
 /* ── 카드 ── */
@@ -222,7 +227,9 @@ a { color: inherit; text-decoration: none; }
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 1px 4px rgba(0,0,0,.1);
-  padding: 24px;
+  /* 카드 안쪽 여백을 유동적으로 조절합니다. */
+  /* 최소 12px(모바일) ~ 최대 24px(데스크탑): 별도 media query 없이 자동으로 조절됩니다. */
+  padding: clamp(12px, 3vw, 24px);
   margin-bottom: 20px;
 }
 
@@ -240,10 +247,14 @@ a { color: inherit; text-decoration: none; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 18px;
+  /* 버튼 안쪽 여백을 유동적으로 조절합니다. */
+  /* 세로: 최소 6px ~ 최대 8px / 가로: 최소 12px ~ 최대 18px */
+  /* 스마트폰에서도 손가락으로 누르기 충분한 크기를 유지합니다. */
+  padding: clamp(6px, 1.5vw, 8px) clamp(12px, 3vw, 18px);
   border-radius: 6px;
   border: none;
-  font-size: .9rem;
+  /* 글자 크기도 유동적으로: 최소 .82rem ~ 최대 .9rem */
+  font-size: clamp(.82rem, 2vw, .9rem);
   font-weight: 600;
   cursor: pointer;
   transition: opacity .15s;
@@ -398,7 +409,10 @@ a { color: inherit; text-decoration: none; }
 }
 /* 검색 입력창 스타일입니다. */
 .search-input {
-  width: 260px;
+  /* 화면 너비의 35%를 기준으로, 최소 160px ~ 최대 260px 사이에서 자동 조절됩니다. */
+  /* max-width: 100% → 어떤 상황에서도 부모 영역을 벗어나지 않습니다. */
+  width: clamp(160px, 35vw, 260px);
+  max-width: 100%;
   height: 36px;
   padding: 0 12px;
   border: 1px solid #d0d0d0;
@@ -715,7 +729,12 @@ textarea.form-control { resize: vertical; min-height: 200px; }
   }
 }
 
-@media (max-width: 600px) {
+/* 768px 이하: 사이드바를 왼쪽 패널에서 상단 가로 스크롤 탭 바로 전환합니다. */
+/* 기존 600px 에서 768px 로 올린 이유: 600~768px 중간 너비에서도 */
+/* 사이드바가 세로 패널로 남아 콘텐츠 공간이 부족해지는 문제를 해결하기 위해서입니다. */
+@media (max-width: 768px) {
+  /* position: static → 왼쪽 고정 해제. 페이지 흐름 안으로 들어옵니다. */
+  /* overflow-x: auto → 탭이 화면보다 많아지면 가로 스크롤이 됩니다. (안드로이드 HorizontalScrollView와 비슷) */
   .side-menu {
     position: static;
     width: auto;
@@ -727,19 +746,63 @@ textarea.form-control { resize: vertical; min-height: 200px; }
     border-bottom: 1px solid #dfe3ea;
     box-shadow: none;
   }
+  /* 각 탭 항목 래퍼가 가로로 눌려서 줄어들지 않도록 고정합니다. */
+  /* flex: 0 0 auto → "늘어나지도 말고, 줄어들지도 말고, 내 내용 크기 그대로 유지해라"는 뜻입니다. */
+  .board-item-wrap {
+    flex: 0 0 auto;
+  }
+  /* 탭 이름 텍스트가 줄바꿈되지 않도록 합니다. */
+  /* white-space: nowrap → 공백 포함 이름(예: "스마트 원패스")이 중간에서 꺾이지 않습니다. */
   .side-menu-item {
     flex: 0 0 auto;
     min-height: 36px;
     padding: 7px 12px;
     font-size: .86rem;
+    white-space: nowrap;
   }
   .side-menu-item + .side-menu-item { margin-top: 0; }
+  /* "게시판 추가하기" 버튼도 탭과 동일하게 처리합니다. */
+  .side-menu-add-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    margin-top: 0;
+  }
+  /* 사이드바가 상단으로 올라가므로 콘텐츠 영역의 왼쪽 여백을 초기화합니다. */
   .container {
     margin: 20px auto;
   }
+}
+
+/* 600px 이하: 스마트폰 화면에 맞게 레이아웃을 최적화합니다. */
+@media (max-width: 600px) {
+  /* 불필요한 테이블 열(작성일, 파일)을 숨겨서 제목 열에 공간을 더 줍니다. */
   .post-table th:nth-child(3),
   .post-table td:nth-child(3),
   .post-table th:nth-child(5),
   .post-table td:nth-child(5) { display: none; }
+  /* 게시판 이름(예: "프로젝트 전체 4건")은 좁은 화면에서 공간을 차지하므로 숨깁니다. */
   .toolbar h2 { display: none; }
+
+  /* 테이블 셀 안쪽 여백을 줄입니다. */
+  /* 기존 12px → 8px 6px: 좁은 화면에서 글자가 더 넓게 보입니다. */
+  .post-table th,
+  .post-table td { padding: 8px 6px; }
+
+  /* 검색창과 버튼을 가로 나란히 → 세로로 쌓이게 변경합니다. */
+  /* flex-direction: column → 안드로이드 LinearLayout(orientation=vertical)과 같습니다. */
+  /* align-items: stretch → 검색창과 버튼이 같은 너비로 늘어납니다. */
+  .search-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  /* 검색 입력창을 화면 전체 너비로 늘립니다. */
+  .search-input { width: 100%; }
+  /* 검색 버튼도 화면 전체 너비로 늘려서 손가락으로 누르기 쉽게 합니다. */
+  .search-btn { width: 100%; }
+
+  /* 댓글 작성 폼: 이름 입력칸과 내용 입력칸을 세로로 쌓습니다. */
+  /* 가로로 나란히 배치하면 좁은 화면에서 너무 눌려 보입니다. */
+  .comment-form .row { flex-direction: column; }
+  /* 이름 입력칸을 화면 전체 너비로 늘립니다. */
+  .comment-form .author-input { width: 100%; }
 }
