@@ -13,14 +13,14 @@
           <tr>
             <th class="center" style="width:60px">번호</th>
             <th>제목</th>
-            <th class="center" style="width:130px">작성일</th>
-            <th class="center" style="width:60px">파일</th>
+            <!-- width:80px : "26/05/21" 형식의 날짜가 딱 들어갈 정도의 최소 너비입니다. -->
+            <th class="center" style="width:80px">작성일</th>
           </tr>
         </thead>
         <tbody>
           <!-- postList.length === 0 : 게시글이 하나도 없을 때 안내 문구를 보여줍니다. -->
           <tr v-if="postList.length === 0">
-            <td colspan="4">
+            <td colspan="3">
               <div class="empty-state">등록된 게시글이 없습니다.</div>
             </td>
           </tr>
@@ -54,8 +54,10 @@
                 </a>
               </template>
             </td>
-            <td class="center text-muted">{{ post.created_at.slice(0, 10) }}</td>
-            <td class="center text-muted">{{ post.file_count > 0 ? '📎' : '' }}</td>
+            <!-- "2026-05-21" → "26/05/21" 형식으로 변환합니다. -->
+            <!-- slice(2, 10) : "2026-05-21"에서 앞의 "20"을 제거해 "26-05-21"을 얻습니다. -->
+            <!-- replaceAll('-', '/') : 하이픈(-)을 슬래시(/)로 모두 바꿔 "26/05/21"로 만듭니다. -->
+            <td class="center text-muted">{{ post.created_at.slice(2, 10).replaceAll('-', '/') }}</td>
           </tr>
         </tbody>
       </table>
