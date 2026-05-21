@@ -53,8 +53,20 @@ function insertInlineImage(file) {
   img.alt = '캡쳐 이미지'
   img.dataset.attachmentName = file.name
   img.onload = () => {
-    wrapper.style.width = `${Math.min(img.naturalWidth || 520, 520)}px`
-    wrapper.style.height = `${Math.min(img.naturalHeight || 320, 420)}px`
+    // 이미지의 실제 픽셀 크기를 읽습니다. (naturalWidth = 이미지 파일의 원본 가로 픽셀 수)
+    const naturalW = img.naturalWidth || 520
+    const naturalH = img.naturalHeight || 320
+    // 표시 너비를 결정합니다.
+    // - 이미지가 너무 작으면(300px 미만) → 최소 300px로 키웁니다.
+    // - 이미지가 너무 크면(520px 초과) → 최대 520px로 줄입니다.
+    // Math.max(a, b) = a와 b 중 큰 값, Math.min(a, b) = a와 b 중 작은 값
+    const displayW = Math.max(Math.min(naturalW, 520), 300)
+    // 너비가 바뀐 만큼 높이도 같은 비율로 조정합니다. (이미지 비율 유지)
+    // 예: 원본이 100×80인데 300px로 키우면, 높이도 240px로 늘어납니다.
+    // Math.round() = 소수점 반올림
+    const displayH = Math.min(Math.round(naturalH * (displayW / naturalW)), 420)
+    wrapper.style.width = `${displayW}px`
+    wrapper.style.height = `${displayH}px`
     URL.revokeObjectURL(img.src)
   }
   wrapper.appendChild(img)
