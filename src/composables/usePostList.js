@@ -40,9 +40,10 @@ export function usePostList() {
   const searchKeyword = ref('')
 
   // currentBoard : URL의 ?board= 값을 읽어서 현재 게시판 종류를 반환합니다.
-  // boardMap.value에 없는 값이 오면 기본값 'project'를 사용합니다.
-  // 사용자가 추가한 게시판도 boardMap에 포함되므로 동적으로 인식합니다.
-  const currentBoard = computed(() => boardMap.value[route.query.board] ? route.query.board : 'project')
+  // boardMap 체크를 없앴습니다. boardMap은 서버 응답이 올 때까지 사용자 추가 게시판을 모르기 때문에
+  // 체크하면 사용자 추가 게시판일 때 항상 'project'로 잘못 반환되는 문제가 있었습니다.
+  // || 'project' : board 값이 없으면(URL에 ?board= 가 없으면) 기본값 'project'를 사용합니다.
+  const currentBoard = computed(() => route.query.board || 'project')
 
   // loadPosts : 서버에서 게시글 목록을 불러와서 postList에 저장하는 함수입니다.
   // async/await : 서버 통신처럼 시간이 걸리는 작업을 기다릴 때 사용하는 문법입니다.

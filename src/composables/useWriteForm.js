@@ -13,8 +13,11 @@ export function useWriteForm() {
 
   const editId = route.params.id || null
   const isEdit = Boolean(editId)
-  // boardMap.value[...] : 유효한 게시판 키인지 확인합니다. 없으면 기본값 'project'를 사용합니다.
-  const currentBoard = ref(boardMap.value[route.query.board] ? route.query.board : 'project')
+  // route.query.board : 현재 URL의 ?board= 값입니다. (예: board_1234567890)
+  // boardMap 체크를 없앴습니다. boardMap은 서버 응답이 올 때까지 사용자 추가 게시판을 모르기 때문에
+  // 체크하면 항상 'project'로 설정되는 문제가 있었습니다.
+  // || 'project' : board 값이 없으면 기본값 'project'를 사용합니다.
+  const currentBoard = ref(route.query.board || 'project')
 
   const title = ref('')
   const selectedFiles = ref([])
@@ -26,7 +29,8 @@ export function useWriteForm() {
     if (!isEdit) return null
     const post = await fetchPost(editId)
     if (!post) { showToast('수정할 글을 찾을 수 없습니다.', true); return null }
-    if (boardMap.value[post.board]) currentBoard.value = post.board
+    // boardMap 체크를 없앴습니다. 서버에서 받아온 post.board 값이 있으면 그냥 저장합니다.
+    if (post.board) currentBoard.value = post.board
     title.value = post.title
     return post
   }

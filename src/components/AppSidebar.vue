@@ -102,10 +102,12 @@ const router = useRouter()
 // addBoard / renameBoard / deleteBoard : 각각 추가/수정/삭제 함수
 const { boards, boardMap, addBoard, renameBoard, deleteBoard } = useBoards()
 
-// currentBoard : 현재 URL의 ?board= 값을 읽어서 활성 게시판을 판단합니다.
-// boardMap.value[route.query.board] 가 없으면(존재하지 않는 게시판) 기본값 'project'를 사용합니다.
+// currentBoard : 현재 URL의 ?board= 값을 읽어서 어떤 게시판이 활성화(파란색)될지 판단합니다.
+// boardMap 체크를 없앴습니다. boardMap은 서버 응답이 올 때까지 사용자 추가 게시판을 모르기 때문에
+// 체크하면 사용자 추가 게시판일 때 항상 'project'가 활성화되는 문제가 있었습니다.
+// || 'project' : board 값이 없으면(URL에 ?board= 가 없으면) 기본값 'project'를 사용합니다.
 const currentBoard = computed(() =>
-  boardMap.value[route.query.board] ? route.query.board : 'project'
+  route.query.board || 'project'
 )
 
 // isCustomBoard : 사용자가 추가한 게시판인지 확인하는 함수입니다.

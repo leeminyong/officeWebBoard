@@ -22,7 +22,9 @@
       "Bash(ls \"C:\\\\Program Files\\\\MySQL\\\\MySQL Workbench 8.0 CE\\\\data\")",
       "Read(//c/Program Files/MySQL/MySQL Workbench 8.0 CE/data/**)",
       "Bash(ls \"C:\\\\Program Files\\\\MySQL\")",
-      "Read(//c/Program Files/MySQL/**)"
+      "Read(//c/Program Files/MySQL/**)",
+      "Bash(New-Item -ItemType File -Path \"d:\\\\officeWebBoard\\\\README.md\" -Force)",
+      "Bash(Out-Null)"
     ],
     "additionalDirectories": [
       "d:\\officeWebBoard\\src"

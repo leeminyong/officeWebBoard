@@ -11,7 +11,10 @@ export function usePostDetail() {
   const { showToast } = useToast()
 
   const post = ref(null)
-  const currentBoard = ref(boardMeta[route.query.board] ? route.query.board : 'project')
+  // route.query.board : 현재 URL의 ?board= 값입니다. (예: board_1234567890)
+  // 사용자가 추가한 게시판은 boardMeta에 없으므로, boardMeta 체크 없이 URL 값을 그대로 사용합니다.
+  // || 'project' : board 값이 없으면(undefined) 기본 게시판인 'project'를 사용합니다.
+  const currentBoard = ref(route.query.board || 'project')
   const cmtFiles = ref([])
   const cmtContent = ref('')
   const editingCommentId = ref(null)
@@ -21,7 +24,11 @@ export function usePostDetail() {
     try {
       const data = await fetchPost(route.params.id)
       if (!data) { showToast('게시글을 찾을 수 없습니다.', true); return }
-      if (boardMeta[data.board]) currentBoard.value = data.board
+      // data.board : 서버에서 받아온 게시글의 게시판 key입니다.
+      // boardMeta 체크를 없앴습니다. 사용자 추가 게시판(board_xxx)은 boardMeta에 없어서
+      // 체크하면 항상 false가 되어 currentBoard가 업데이트되지 않는 버그가 있었습니다.
+      // 서버에서 온 board 값은 실제 존재하는 게시판이므로 그냥 저장해도 안전합니다.
+      if (data.board) currentBoard.value = data.board
       post.value = data
     } catch {
       showToast('불러오기 실패', true)
