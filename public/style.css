@@ -31,6 +31,40 @@ a { color: inherit; text-decoration: none; }
 .site-header h1 { font-size: clamp(1rem, 2.5vw, 1.2rem); font-weight: 700; cursor: pointer; }
 .site-header h1:hover { opacity: .85; }
 
+/* ── 테마 전환 버튼 (라이트 / 다크) ── */
+/* 헤더 오른쪽에 있는 모드 전환 버튼 공통 스타일입니다. */
+.theme-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  /* 세로 5px, 가로 12px 안쪽 여백을 줍니다. */
+  padding: 5px 12px;
+  /* border-radius: 20px → 버튼 테두리를 둥글게 만들어 pill(알약) 모양으로 만듭니다. */
+  border-radius: 20px;
+  /* rgba(255,255,255,.4) → 반투명 흰색 테두리입니다. 파란 헤더 위에서 자연스럽게 보입니다. */
+  border: 1.5px solid rgba(255,255,255,.4);
+  background: transparent;
+  color: rgba(255,255,255,.8);
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  /* transition : 마우스를 올렸을 때 색이 부드럽게 바뀌도록 합니다. */
+  transition: background .15s, border-color .15s, color .15s;
+  font-family: inherit;
+  /* white-space: nowrap → 버튼 텍스트(☀️ 라이트)가 두 줄로 꺾이지 않게 합니다. */
+  white-space: nowrap;
+}
+.theme-btn:hover {
+  background: rgba(255,255,255,.2);
+  color: #fff;
+}
+/* active : 현재 선택된 모드 버튼에 붙는 클래스입니다. 강조해서 "지금 이 모드입니다"를 알려줍니다. */
+.theme-btn.active {
+  background: rgba(255,255,255,.25);
+  border-color: #fff;
+  color: #fff;
+}
+
 /* ── 왼쪽 메뉴 ── */
 .side-menu {
   position: fixed;
@@ -812,4 +846,414 @@ textarea.form-control { resize: vertical; min-height: 200px; }
   .comment-form .row { flex-direction: column; }
   /* 이름 입력칸을 화면 전체 너비로 늘립니다. */
   .comment-form .author-input { width: 100%; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   다크 모드 스타일
+   [data-theme="dark"] : <html> 태그에 data-theme="dark" 속성이 있을 때만 아래 스타일이 적용됩니다.
+   App.vue에서 버튼 클릭 시 document.documentElement.setAttribute('data-theme', 'dark')로 적용합니다.
+   라이트 모드일 때는 이 속성이 없으므로 아래 스타일이 전혀 적용되지 않습니다.
+═══════════════════════════════════════════════════════════════ */
+
+/* 전체 페이지 배경 및 기본 글자색 */
+[data-theme="dark"] body {
+  background: #1a1b1e;
+  color: #c1c2c5;
+}
+
+/* ── 헤더: 파란색 계열 유지, 약간 더 어둡게 ── */
+[data-theme="dark"] .site-header {
+  background: #1557b0;
+  box-shadow: 0 2px 6px rgba(0,0,0,.5);
+}
+
+/* ── 왼쪽 사이드바 ── */
+[data-theme="dark"] .side-menu {
+  background: #25262b;
+  border-right-color: #373a40;
+  box-shadow: 1px 0 4px rgba(0,0,0,.25);
+}
+
+/* 사이드바 메뉴 항목 글자색 */
+[data-theme="dark"] .side-menu-item {
+  color: #c1c2c5;
+}
+
+/* 마우스를 올렸을 때 */
+[data-theme="dark"] .side-menu-item:hover {
+  background: #2c2e33;
+  color: #74c0fc;
+}
+
+/* 현재 선택된(활성화된) 메뉴 항목 */
+[data-theme="dark"] .side-menu-item.active {
+  background: #1c3a6b;
+  color: #74c0fc;
+}
+
+/* "게시판 추가하기" 버튼 */
+[data-theme="dark"] .side-menu-add-btn {
+  color: #6b8ab5;
+  border-color: #373a40;
+}
+
+[data-theme="dark"] .side-menu-add-btn:hover {
+  background: #2c2e33;
+  color: #74c0fc;
+  border-color: #74c0fc;
+}
+
+/* 게시판 이름 입력창 */
+[data-theme="dark"] .add-board-input {
+  background: #2c2e33;
+  color: #c1c2c5;
+  border-color: #4a90d9;
+  box-shadow: 0 0 0 3px rgba(26,115,232,.2);
+}
+
+/* ── 카드 (흰 배경 박스 영역) ── */
+[data-theme="dark"] .card {
+  background: #25262b;
+  box-shadow: 0 1px 4px rgba(0,0,0,.4);
+}
+
+/* 목록 상단 툴바의 게시판 이름 텍스트 */
+[data-theme="dark"] .toolbar h2 {
+  color: #909296;
+}
+
+/* ── 게시글 목록 테이블 ── */
+[data-theme="dark"] .post-table thead tr {
+  background: #2c2e33;
+  border-bottom-color: #373a40;
+}
+
+[data-theme="dark"] .post-table th {
+  color: #909296;
+}
+
+[data-theme="dark"] .post-table tbody tr {
+  border-bottom-color: #2c2e33;
+}
+
+[data-theme="dark"] .post-table tbody tr:hover {
+  background: #2c2e33;
+}
+
+[data-theme="dark"] .post-table td {
+  color: #c1c2c5;
+}
+
+/* 게시글 제목 링크 */
+[data-theme="dark"] .post-title-link {
+  color: #74c0fc;
+}
+
+/* 게시글 상세 - 날짜/메타 정보 */
+[data-theme="dark"] .post-meta {
+  color: #6b737d;
+  border-bottom-color: #373a40;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   게시글 내용 영역: 다크 모드 적용 + 인라인 색상 강제 덮어쓰기
+
+   문제: 외부 사이트/VS Code에서 복사 붙여넣기한 내용에는
+          style="color:#000; background-color:#fff" 같은 인라인 스타일이 포함됩니다.
+          배경이 어두우면 검정/어두운 빨강 등이 안 보입니다.
+
+   해결: CSS !important 로 인라인 style="" 속성보다 이 CSS 규칙을 우선 적용합니다.
+          → 모든 인라인 색상을 다크모드 기본 색으로 통일합니다.
+          → 문법 색상(syntax highlight)은 제거되지만, 모든 글자가 확실히 보입니다.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+[data-theme="dark"] .post-content {
+  background: #2c2e33;
+  color: #c1c2c5;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+/* 인라인 style="" 속성에 color 가 있는 모든 요소의 글자색을 덮어씁니다. */
+/* color: inherit → 부모 요소의 색을 물려받습니다. 결국 .post-content의 #c1c2c5(밝은 회색)이 됩니다. */
+/* !important : style="" 직접 지정보다 이 CSS 규칙이 먼저 적용됩니다. */
+[data-theme="dark"] .post-content [style*="color"] {
+  color: inherit !important;
+}
+
+/* 인라인 style="" 속성에 background 가 있는 모든 요소의 배경을 투명으로 만듭니다. */
+/* transparent → 흰 배경/짙은 배경 등을 제거합니다. post-content의 어두운 배경이 보입니다. */
+[data-theme="dark"] .post-content [style*="background"] {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* 마크다운 코드 블록(<pre>)은 다크 배경 + 밝은 글자를 명시적으로 지정합니다. */
+/* 마크다운으로 생성된 <pre>는 inline style이 없으므로 위의 override와 충돌하지 않습니다. */
+[data-theme="dark"] .post-content pre {
+  background: #1e1e2e !important;
+  color: #cdd6f4 !important;
+}
+
+/* 글쓰기 에디터 입력 영역은 흰 배경 유지 */
+/* 이유: 편집 중에는 인라인 색상이 그대로 보여야 실제 저장 결과를 예측할 수 있습니다. */
+[data-theme="dark"] .content-editor {
+  background: #fff;
+  color: #222;
+}
+
+/* ── 첨부파일 영역 ── */
+[data-theme="dark"] .attach-section {
+  border-top-color: #373a40;
+}
+
+[data-theme="dark"] .attach-section h4 {
+  color: #909296;
+}
+
+[data-theme="dark"] .file-item {
+  background: #2c2e33;
+}
+
+[data-theme="dark"] .file-item .file-name {
+  color: #74c0fc;
+}
+
+[data-theme="dark"] .file-item .file-size {
+  color: #6b737d;
+}
+
+[data-theme="dark"] .img-preview-item {
+  border-color: #373a40;
+}
+
+/* ── 버튼 ── */
+/* 보조 버튼(회색 버튼): 목록, 수정, 고정 등 */
+[data-theme="dark"] .btn-secondary {
+  background: #2c2e33;
+  color: #c1c2c5;
+}
+
+/* ── 입력 폼 (제목 입력창, 댓글 입력창 등) ── */
+[data-theme="dark"] .form-control {
+  background: #2c2e33;
+  color: #c1c2c5;
+  border-color: #373a40;
+}
+
+[data-theme="dark"] .form-control:focus {
+  border-color: #4a90d9;
+  box-shadow: 0 0 0 3px rgba(26,115,232,.2);
+}
+
+/* 폼 라벨(제목, 내용, 첨부파일 글자) */
+[data-theme="dark"] .form-group label {
+  color: #909296;
+}
+
+/* ── 검색창 ── */
+[data-theme="dark"] .search-input {
+  background: #2c2e33;
+  color: #c1c2c5;
+  border-color: #373a40;
+}
+
+[data-theme="dark"] .search-input:focus {
+  border-color: #4a90d9;
+}
+
+/* ── 댓글 영역 ── */
+[data-theme="dark"] .comment-section h3 {
+  color: #c1c2c5;
+}
+
+/* 각 댓글 박스 배경 */
+[data-theme="dark"] .comment-item {
+  background: #2c2e33;
+}
+
+/* 댓글 텍스트 */
+[data-theme="dark"] .comment-text {
+  color: #c1c2c5;
+}
+
+/* 댓글 날짜 */
+[data-theme="dark"] .comment-date {
+  color: #6b737d;
+}
+
+/* 댓글 안 마크다운 요소들 다크 처리 */
+/* 댓글은 사용자가 직접 입력한 텍스트라 인라인 검정 스타일이 없습니다. */
+[data-theme="dark"] .comment-text.md-body h1,
+[data-theme="dark"] .comment-text.md-body h2 {
+  border-bottom-color: #373a40;
+}
+
+[data-theme="dark"] .comment-text.md-body th,
+[data-theme="dark"] .comment-text.md-body td {
+  border-color: #373a40;
+}
+
+[data-theme="dark"] .comment-text.md-body th {
+  background: #2c2e33;
+  color: #c1c2c5;
+}
+
+[data-theme="dark"] .comment-text.md-body tr:nth-child(even) td {
+  background: #1e1f23;
+}
+
+[data-theme="dark"] .comment-text.md-body code {
+  background: #1e1f23;
+  color: #cdd6f4;
+}
+
+[data-theme="dark"] .comment-text.md-body blockquote {
+  background: #1c3a6b;
+  color: #9db4d8;
+}
+
+[data-theme="dark"] .comment-text.md-body hr {
+  border-top-color: #373a40;
+}
+
+[data-theme="dark"] .comment-text.md-body a {
+  color: #74c0fc;
+}
+
+/* ── 게시글 목록 인라인 댓글 미리보기 ── */
+[data-theme="dark"] .inline-comment {
+  background: #2c2e33;
+  border-left-color: #373a40;
+}
+
+[data-theme="dark"] .inline-comment:hover {
+  background: #1c3a6b;
+  border-left-color: #74c0fc;
+}
+
+[data-theme="dark"] .inline-comment-author {
+  color: #c1c2c5;
+}
+
+[data-theme="dark"] .inline-comment-text {
+  color: #909296;
+}
+
+/* 댓글 수 배지 */
+[data-theme="dark"] .badge-comment {
+  background: #1c3a6b;
+  color: #74c0fc;
+}
+
+/* 파일 첨부 배지 */
+[data-theme="dark"] .badge-file {
+  background: #332b00;
+  color: #f5c518;
+}
+
+[data-theme="dark"] .text-muted {
+  color: #6b737d;
+}
+
+/* ── 페이지네이션 버튼 ── */
+[data-theme="dark"] .page-btn {
+  background: #25262b;
+  border-color: #373a40;
+  color: #c1c2c5;
+}
+
+[data-theme="dark"] .page-btn:hover {
+  background: #1c3a6b;
+  border-color: #74c0fc;
+  color: #74c0fc;
+}
+
+/* 현재 페이지 버튼은 파란색 유지 */
+[data-theme="dark"] .page-btn.active {
+  background: #1a73e8;
+  border-color: #1a73e8;
+  color: #fff;
+}
+
+/* ── 파일 드롭 업로드 영역 ── */
+[data-theme="dark"] .file-drop-zone {
+  border-color: #373a40;
+  color: #6b737d;
+}
+
+[data-theme="dark"] .file-drop-zone:hover,
+[data-theme="dark"] .file-drop-zone.drag-over {
+  border-color: #74c0fc;
+  background: #1c3a6b;
+  color: #74c0fc;
+}
+
+/* 선택된 첨부파일 목록 */
+[data-theme="dark"] .selected-file-item {
+  background: #2c2e33;
+  color: #c1c2c5;
+}
+
+/* ── 마크다운 분할 에디터 (글쓰기 화면의 미리보기 에디터) ── */
+[data-theme="dark"] .md-split-editor {
+  border-color: #373a40;
+}
+
+/* 왼쪽(마크다운 입력) 패널 */
+[data-theme="dark"] .md-split-left {
+  background: #2c2e33;
+  color: #c1c2c5;
+  border-right-color: #373a40;
+}
+
+/* 오른쪽(미리보기) 패널 */
+[data-theme="dark"] .md-split-right {
+  background: #25262b;
+}
+
+[data-theme="dark"] .md-split-label {
+  color: #6b737d;
+}
+
+/* 미리보기 패널 안의 마크다운 요소 다크 처리 */
+[data-theme="dark"] .md-split-right .md-body h1,
+[data-theme="dark"] .md-split-right .md-body h2 {
+  border-bottom-color: #373a40;
+}
+
+[data-theme="dark"] .md-split-right .md-body th,
+[data-theme="dark"] .md-split-right .md-body td {
+  border-color: #373a40;
+}
+
+[data-theme="dark"] .md-split-right .md-body th {
+  background: #2c2e33;
+}
+
+[data-theme="dark"] .md-split-right .md-body tr:nth-child(even) td {
+  background: #1e1f23;
+}
+
+[data-theme="dark"] .md-split-right .md-body code {
+  background: #1e1f23;
+  color: #cdd6f4;
+}
+
+[data-theme="dark"] .md-split-right .md-body blockquote {
+  background: #1c3a6b;
+  color: #9db4d8;
+}
+
+[data-theme="dark"] .md-split-right .md-body hr {
+  border-top-color: #373a40;
+}
+
+[data-theme="dark"] .md-split-right .md-body a {
+  color: #74c0fc;
+}
+
+/* ── 빈 목록 안내 문구 ── */
+[data-theme="dark"] .empty-state {
+  color: #6b737d;
 }
