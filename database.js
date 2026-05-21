@@ -58,6 +58,12 @@ const postColumns = db.prepare('PRAGMA table_info(posts)').all().map(col => col.
 if (!postColumns.includes('board')) {
   db.exec("ALTER TABLE posts ADD COLUMN board TEXT NOT NULL DEFAULT 'project'");
 }
+// is_pinned : 게시글 고정 여부를 저장합니다. 1이면 고정, 0이면 일반 글입니다.
+// 이미 만들어진 DB 파일에도 컬럼을 추가하기 위해 ALTER TABLE을 사용합니다.
+// CREATE TABLE의 IF NOT EXISTS 만으로는 기존 DB에 컬럼을 추가할 수 없습니다.
+if (!postColumns.includes('is_pinned')) {
+  db.exec("ALTER TABLE posts ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0");
+}
 
 // boards 테이블이 비어 있으면 기본 게시판 4개를 넣습니다.
 // 서버를 처음 실행하거나 DB를 새로 만들 때 한 번만 실행됩니다.

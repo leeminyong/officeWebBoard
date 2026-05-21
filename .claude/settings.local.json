@@ -24,7 +24,10 @@
       "Bash(ls \"C:\\\\Program Files\\\\MySQL\")",
       "Read(//c/Program Files/MySQL/**)",
       "Bash(New-Item -ItemType File -Path \"d:\\\\officeWebBoard\\\\README.md\" -Force)",
-      "Bash(Out-Null)"
+      "Bash(Out-Null)",
+      "Bash(Get-ChildItem -Path \"d:\\\\officeWebBoard\" -Recurse -Force)",
+      "Bash(Select-Object FullName)",
+      "Bash(grep -E '\\\\.\\(js|json|sql\\)$')"
     ],
     "additionalDirectories": [
       "d:\\officeWebBoard\\src"

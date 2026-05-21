@@ -210,7 +210,8 @@ app.get('/api/posts', (req, res) => {
     WHERE p.board = ?
     ${searchParam ? 'AND (p.title LIKE ? OR p.content LIKE ?)' : ''}
     GROUP BY p.id
-    ORDER BY CASE WHEN p.title LIKE '%완료%' THEN 1 ELSE 0 END ASC,
+    ORDER BY p.is_pinned DESC,
+             CASE WHEN p.title LIKE '%완료%' THEN 1 ELSE 0 END ASC,
              p.created_at DESC,
              p.id DESC
     LIMIT ? OFFSET ?
@@ -316,6 +317,25 @@ app.delete('/api/posts/:id', (req, res) => {
   db.prepare('DELETE FROM comments WHERE post_id = ?').run(req.params.id);
   db.prepare('DELETE FROM posts    WHERE id = ?').run(req.params.id);
   res.json({ success: true });
+});
+
+// ── 게시글 고정/해제 ───────────────────────────────────────
+// PATCH : HTTP에서 '일부 데이터만 바꿀 때' 쓰는 방식입니다. (PUT은 전체 교체, PATCH는 부분 수정)
+// 고정 버튼을 누를 때마다 is_pinned 값을 0 ↔ 1로 전환합니다.
+// 현재 값이 1(고정)이면 0(일반)으로, 0(일반)이면 1(고정)으로 바꿉니다.
+app.patch('/api/posts/:id/pin', (req, res) => {
+  // 먼저 해당 게시글이 존재하는지 확인합니다. 없으면 404 오류를 돌려줍니다.
+  const post = db.prepare('SELECT id, is_pinned FROM posts WHERE id = ?').get(req.params.id);
+  if (!post) return res.status(404).json({ error: '게시글을 찾을 수 없습니다.' });
+
+  // is_pinned가 1이면 0으로, 0이면 1로 전환합니다.
+  // ! 연산자: true → false, false → true 처럼 값을 반전시킵니다.
+  // Number(): Boolean을 숫자로 바꿉니다. true → 1, false → 0
+  const newValue = Number(!post.is_pinned);
+  db.prepare('UPDATE posts SET is_pinned = ? WHERE id = ?').run(newValue, req.params.id);
+
+  // 변경된 고정 상태를 응답으로 돌려줍니다. 프론트엔드에서 화면을 바로 업데이트할 때 씁니다.
+  res.json({ is_pinned: newValue });
 });
 
 // ── 댓글 작성 ─────────────────────────────────────────────

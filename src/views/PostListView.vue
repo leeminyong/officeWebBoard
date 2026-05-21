@@ -31,6 +31,9 @@
             <!-- 예) 2페이지 첫 번째 글이면 (2-1)*10 + 0 + 1 = 11번 -->
             <td class="center text-muted">{{ (pageInfo.page - 1) * 10 + index + 1 }}</td>
             <td>
+              <!-- post.is_pinned가 1이면 📌 아이콘을 제목 앞에 표시합니다. -->
+              <!-- v-if="post.is_pinned" : is_pinned가 1(true)일 때만 이 span을 화면에 보여줍니다. -->
+              <span v-if="post.is_pinned" class="badge-pin">📌</span>
               <a class="post-title-link" href="#" @click.prevent="goToPost(post.id)">
                 {{ post.title }}
               </a>

@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { fetchPost, deletePost as apiDeletePost, createComment, updateComment, deleteComment as apiDeleteComment, deletePostFile, deleteCommentFile } from '../api.js'
+import { fetchPost, deletePost as apiDeletePost, createComment, updateComment, deleteComment as apiDeleteComment, deletePostFile, deleteCommentFile, togglePin as apiTogglePin } from '../api.js'
 import { useToast } from './useToast.js'
 import { boardMeta } from '../board.js'
 import { downloadFromUrl } from '../utils.js'
@@ -133,6 +133,21 @@ export function usePostDetail() {
 
   function removeCmtFile(index) { cmtFiles.value.splice(index, 1) }
 
+  // handleTogglePin : 고정 버튼을 눌렀을 때 실행되는 함수입니다. (ViewModel 레이어)
+  // 서버에 고정 전환 요청을 보내고, 성공하면 화면의 post 데이터를 즉시 업데이트합니다.
+  // 이렇게 하면 페이지를 다시 불러오지 않아도 버튼 텍스트가 바로 바뀝니다.
+  async function handleTogglePin() {
+    const res = await apiTogglePin(route.params.id)
+    if (res.ok) {
+      // post.value.is_pinned : 현재 화면에 저장된 고정 상태를 서버 응답 값으로 덮어씁니다.
+      // 안드로이드로 비유하면 LiveData.setValue()로 UI를 업데이트하는 것과 같습니다.
+      post.value.is_pinned = res.data.is_pinned
+      showToast(res.data.is_pinned ? '게시글이 고정되었습니다.' : '고정이 해제되었습니다.')
+    } else {
+      showToast('고정 설정 실패', true)
+    }
+  }
+
   function goToEdit() {
     router.push({ path: `/posts/${route.params.id}/edit`, query: { board: currentBoard.value } })
   }
@@ -144,7 +159,7 @@ export function usePostDetail() {
 
   return {
     post, currentBoard, cmtFiles, cmtContent, editingCommentId, editingCommentContent,
-    loadPost, handleDeletePost, submitComment, startEditComment, cancelEditComment, submitEditComment, handleDeleteComment,
+    loadPost, handleDeletePost, handleTogglePin, submitComment, startEditComment, cancelEditComment, submitEditComment, handleDeleteComment,
     handleDeletePostFile, handleDeleteCommentFile,
     downloadFile, downloadCommentFile, addCmtFiles, removeCmtFile, goToEdit, goToList,
   }

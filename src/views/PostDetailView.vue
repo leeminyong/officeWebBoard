@@ -33,6 +33,20 @@
       <div class="action-bar" style="margin-top:24px">
         <button class="btn btn-secondary" @click="goToList">← 목록</button>
         <div class="right">
+          <!-- 고정 버튼: 누를 때마다 고정/해제가 전환됩니다. -->
+          <!-- post.is_pinned가 1(고정 상태)이면 '고정 해제', 0이면 '고정' 텍스트를 보여줍니다. -->
+          <!-- v-if / v-else: 조건에 따라 두 버튼 중 하나만 화면에 그립니다. -->
+          <button
+            v-if="post.is_pinned"
+            class="btn btn-secondary btn-sm"
+            style="color:#e67e22;border-color:#e67e22"
+            @click="handleTogglePin"
+          >📌 고정 해제</button>
+          <button
+            v-else
+            class="btn btn-secondary btn-sm"
+            @click="handleTogglePin"
+          >📌 고정</button>
           <button class="btn btn-secondary btn-sm" @click="goToEdit">수정</button>
           <button class="btn btn-danger btn-sm" @click="handleDeletePost">삭제</button>
         </div>
@@ -116,7 +130,7 @@ import { isImage, formatSize } from '../utils.js'
 const route = useRoute()
 const {
   post, cmtFiles, cmtContent, editingCommentId, editingCommentContent,
-  loadPost, handleDeletePost, submitComment, startEditComment, cancelEditComment, submitEditComment, handleDeleteComment,
+  loadPost, handleDeletePost, handleTogglePin, submitComment, startEditComment, cancelEditComment, submitEditComment, handleDeleteComment,
   handleDeletePostFile, handleDeleteCommentFile,
   downloadFile, downloadCommentFile, addCmtFiles, removeCmtFile, goToEdit, goToList,
 } = usePostDetail()
