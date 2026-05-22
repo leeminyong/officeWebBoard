@@ -28,3 +28,4 @@ certs/*.pem
 # Local environment overrides.
 .env
 .env.*
+/cloudflared-windows-amd64.exe
