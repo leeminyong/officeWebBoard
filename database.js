@@ -52,6 +52,15 @@ db.exec(`
     created_at    TEXT DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (comment_id) REFERENCES comments(id)
   );
+
+  -- 서버 설정값을 저장하는 테이블입니다.
+  -- 현재는 관리자 비밀번호 해시를 여기에 보관합니다.
+  -- key : 설정 항목 이름 (예: 'admin_password_hash')
+  -- value : 설정 값 (예: bcrypt 해시 문자열 — DB를 열어봐도 원래 비밀번호를 알 수 없습니다)
+  CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
 `);
 
 const postColumns = db.prepare('PRAGMA table_info(posts)').all().map(col => col.name);

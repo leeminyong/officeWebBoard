@@ -89,7 +89,8 @@
 // computed : 다른 값이 바뀔 때 자동으로 재계산되는 읽기전용 값입니다.
 // nextTick : Vue가 화면을 다시 그린 직후에 코드를 실행할 때 사용합니다.
 // ref : 반응형 변수를 만들 때 사용합니다.
-import { computed, nextTick, ref } from 'vue'
+// onMounted : 컴포넌트가 화면에 처음 표시될 때 실행할 코드를 등록합니다. (안드로이드의 onResume과 비슷)
+import { computed, nextTick, onMounted, ref } from 'vue'
 // useRoute : 현재 URL 정보를, useRouter : 페이지 이동 함수를 제공합니다.
 import { useRoute, useRouter } from 'vue-router'
 // useBoards : 게시판 목록 상태와 추가/수정/삭제 함수를 제공하는 ViewModel composable입니다.
@@ -100,7 +101,12 @@ const router = useRouter()
 
 // boards : 게시판 목록 배열, boardMap : { key: label } 객체
 // addBoard / renameBoard / deleteBoard : 각각 추가/수정/삭제 함수
-const { boards, boardMap, addBoard, renameBoard, deleteBoard } = useBoards()
+// loadBoards : 서버에서 최신 게시판 목록을 가져오는 함수
+const { boards, boardMap, addBoard, renameBoard, deleteBoard, loadBoards } = useBoards()
+
+// 사이드바가 화면에 처음 나타날 때 서버에서 실제 게시판 목록을 가져옵니다.
+// 로그인 전에는 이 컴포넌트가 숨겨져 있으므로, 여기서 fetch가 실행될 때는 반드시 로그인된 상태입니다.
+onMounted(loadBoards)
 
 // currentBoard : 현재 URL의 ?board= 값을 읽어서 어떤 게시판이 활성화(파란색)될지 판단합니다.
 // boardMap 체크를 없앴습니다. boardMap은 서버 응답이 올 때까지 사용자 추가 게시판을 모르기 때문에

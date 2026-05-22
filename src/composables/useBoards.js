@@ -25,9 +25,9 @@ const boards = ref(
 )
 
 // 앱이 시작될 때 서버에서 최신 게시판 목록을 바로 가져옵니다.
-// 이렇게 하면 사용자가 추가한 게시판도 화면에 바로 반영됩니다.
-// catch(() => {}) : 서버 오류가 생겨도 앱이 멈추지 않고 기본 게시판으로 유지됩니다.
-apiFetchBoards().then(data => { boards.value = data }).catch(() => {})
+// Array.isArray(data) 확인: 서버가 배열이 아닌 값(예: 로그인 전 401 오류 객체)을 보내면
+// boards.value를 덮어쓰지 않고 기본 목록을 유지합니다.
+apiFetchBoards().then(data => { if (Array.isArray(data)) boards.value = data }).catch(() => {})
 
 // ── Composable 함수 (외부에서 호출하는 진입점) ──────────────
 // export function : 다른 파일에서 이 함수를 가져다 쓸 수 있게 내보냅니다.
@@ -98,6 +98,18 @@ export function useBoards() {
     }
   }
 
+  // loadBoards : 서버에서 최신 게시판 목록을 가져와서 boards를 업데이트하는 함수입니다.
+  // 로그인 성공 후 AppSidebar가 마운트될 때 호출해서 실제 목록을 반영합니다.
+  async function loadBoards() {
+    try {
+      const data = await apiFetchBoards()
+      // 서버가 배열을 돌려줬을 때만 적용합니다. (401 오류 객체로 덮어쓰는 것을 방지)
+      if (Array.isArray(data)) boards.value = data
+    } catch {
+      // 네트워크 오류 등이 생겨도 기본 게시판 목록이 유지됩니다.
+    }
+  }
+
   // 이 composable을 사용하는 컴포넌트에서 접근할 수 있도록 필요한 것들을 반환합니다.
-  return { boards, boardMap, addBoard, renameBoard, deleteBoard }
+  return { boards, boardMap, addBoard, renameBoard, deleteBoard, loadBoards }
 }

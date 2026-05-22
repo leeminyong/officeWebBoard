@@ -3,6 +3,12 @@ const multer  = require('multer');
 const path    = require('path');
 const fs      = require('fs');
 const db      = require('./database');
+// express-session : 로그인 상태를 서버 메모리에 기억하는 라이브러리입니다.
+// 안드로이드의 SharedPreferences처럼 "이 사람은 로그인됐음"을 저장합니다.
+const session = require('express-session');
+// bcryptjs : 비밀번호를 단방향 암호화(해시)하는 라이브러리입니다.
+// 해시된 값으로 원래 비밀번호를 역으로 알아낼 수 없습니다.
+const bcrypt  = require('bcryptjs');
 
 const app  = express();
 const PORT = 3000;
@@ -40,9 +46,85 @@ const BOARDS = new Set(db.prepare('SELECT key FROM boards').all().map(b => b.key
 const DEFAULT_BOARD_KEYS = new Set(['project', 'maintenance', 'maintenance-done', 'app-version', 'files']);
 
 app.use(express.json());
+
+// ── 세션 미들웨어 설정 ─────────────────────────────────────
+// secret : 세션 쿠키를 서명(위변조 방지)하는 비밀 키입니다.
+// resave: false → 세션이 변경되지 않아도 다시 저장하지 않습니다. (불필요한 DB 쓰기 방지)
+// saveUninitialized: false → 로그인 전에는 세션을 생성하지 않습니다.
+// httpOnly: true → 자바스크립트에서 쿠키를 읽지 못하게 해서 XSS 공격을 막습니다.
+// sameSite: 'lax' → 외부 사이트에서 쿠키가 전송되는 것을 막아 CSRF 공격을 방지합니다.
+// maxAge : 8시간 후 세션이 자동 만료됩니다. (단위: 밀리초)
+app.use(session({
+  secret: 'officeBoard_s3cr3t_key_2024',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 8 * 60 * 60 * 1000,
+  },
+}));
+
 const distDir = path.join(__dirname, 'dist');
 app.use(express.static(fs.existsSync(distDir) ? distDir : path.join(__dirname, 'public')));
 app.use('/uploads', express.static(uploadsDir));
+
+// ── 비밀번호 해시 초기화 ───────────────────────────────────
+// 서버 첫 실행 시 '8514!!' 비밀번호를 bcrypt 해시로 변환해서 DB에 저장합니다.
+// 이미 해시가 저장돼 있으면 건너뜁니다. (서버를 재시작해도 해시가 바뀌지 않습니다.)
+// bcrypt 해시 예시: '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'
+//   → DB에 이 문자열이 저장되므로, 파일을 열어봐도 '8514!!'를 알 수 없습니다.
+// hashSync(값, 10) : 10번 반복 연산으로 해시 생성 — 숫자가 클수록 안전하지만 느립니다.
+const existingPw = db.prepare("SELECT value FROM settings WHERE key = 'admin_password_hash'").get();
+if (!existingPw) {
+  const hash = bcrypt.hashSync('8514!!', 10);
+  db.prepare("INSERT INTO settings (key, value) VALUES ('admin_password_hash', ?)").run(hash);
+}
+
+// ── 로그인 상태 확인 API ───────────────────────────────────
+// 브라우저가 새로고침되거나 페이지를 이동할 때 "아직 로그인 상태인지" 확인합니다.
+// req.session.loggedIn : 로그인 성공 후 서버가 세션에 저장해둔 값입니다.
+// !! : 값을 Boolean(true/false)으로 변환합니다. undefined → false, true → true
+app.get('/api/auth/check', (req, res) => {
+  res.json({ loggedIn: !!req.session.loggedIn });
+});
+
+// ── 로그인 API ─────────────────────────────────────────────
+// 사용자가 입력한 비밀번호를 DB의 해시와 비교합니다.
+// bcrypt.compareSync(입력값, 저장된해시) : 입력값을 해시로 변환해서 비교합니다.
+// 원래 비밀번호를 꺼내지 않고도 맞는지 틀린지 확인할 수 있습니다. (단방향 암호화의 특성)
+app.post('/api/login', (req, res) => {
+  const { password } = req.body;
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'admin_password_hash'").get();
+  if (!row) return res.status(500).json({ error: '서버 설정 오류입니다.' });
+
+  const isMatch = bcrypt.compareSync(password || '', row.value);
+  if (!isMatch) return res.status(401).json({ error: '비밀번호가 틀렸습니다.' });
+
+  // 로그인 성공 : 세션에 로그인 여부를 기록합니다.
+  req.session.loggedIn = true;
+  res.json({ ok: true });
+});
+
+// ── 로그아웃 API ───────────────────────────────────────────
+// 세션을 삭제해서 로그인 상태를 초기화합니다.
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(() => {});
+  res.json({ ok: true });
+});
+
+// ── 인증 검사 미들웨어 ─────────────────────────────────────
+// 이 함수는 아래 모든 /api 요청이 실행되기 전에 먼저 실행됩니다.
+// 로그인된 상태면 next()를 호출해서 원래 요청을 계속 처리합니다.
+// 로그인이 안 됐으면 401 오류를 반환하고 요청을 차단합니다.
+// 401 : HTTP 상태 코드로 "인증 필요"를 의미합니다.
+function requireAuth(req, res, next) {
+  if (req.session?.loggedIn) return next();
+  return res.status(401).json({ error: '로그인이 필요합니다.' });
+}
+// /api로 시작하는 모든 요청(위의 로그인/로그아웃/확인 API 제외)에 인증 검사를 적용합니다.
+// 위에서 이미 처리된 /api/auth/check, /api/login, /api/logout 요청은 여기까지 오지 않습니다.
+app.use('/api', requireAuth);
 
 // ── 게시판 목록 조회 ───────────────────────────────────────
 // 프론트엔드에서 사이드바 메뉴를 그릴 때 이 API로 게시판 목록을 가져갑니다.
