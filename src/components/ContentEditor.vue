@@ -1,11 +1,42 @@
 <template>
-  <div
-    ref="editorEl"
-    class="form-control content-editor md-body"
-    contenteditable="true"
-    data-placeholder="내용을 입력하세요..."
-    @paste="handlePaste"
-  ></div>
+  <!-- 에디터 전체를 감싸는 wrapper div. 툴바와 글쓰기 영역을 세로로 배치합니다. -->
+  <div class="editor-wrapper">
+
+    <!-- 서식 도구 모음(툴바). 글쓰기 영역 위에 표시됩니다. -->
+    <div class="editor-toolbar">
+
+      <!-- 글자 색상 버튼 영역 -->
+      <!-- position:relative로 감싸서, 안에 있는 color input이 이 영역 전체를 덮도록 합니다. -->
+      <div class="toolbar-color-wrap" title="글자 색상 변경">
+        <!-- 색상 표시 아이콘: "A" 글자 아래에 현재 선택된 색상 줄이 표시됩니다. -->
+        <!-- :style은 Vue에서 인라인 스타일을 동적으로 바꿀 때 쓰는 문법입니다. -->
+        <!-- selectedColor가 바뀔 때마다 밑줄 색도 자동으로 바뀝니다. -->
+        <span class="color-icon" :style="{ borderBottomColor: selectedColor }">A</span>
+
+        <!-- type="color"는 브라우저 내장 색상 선택 팝업을 여는 입력 요소입니다. -->
+        <!-- @mousedown: 색상 팝업이 열리기 직전에 현재 선택 영역을 저장합니다. -->
+        <!--   (팝업이 열리면 에디터 포커스가 사라져 선택이 풀리기 때문에 미리 저장해둡니다.) -->
+        <!-- @change: 색상을 고른 뒤 확인하면 저장해둔 선택 영역에 색상을 적용합니다. -->
+        <input
+          type="color"
+          v-model="selectedColor"
+          @mousedown="saveSelection"
+          @change="applyColor"
+        />
+      </div>
+
+    </div>
+
+    <!-- 실제 글을 입력하는 영역. contenteditable="true"로 사용자가 직접 타이핑할 수 있습니다. -->
+    <div
+      ref="editorEl"
+      class="form-control content-editor md-body"
+      contenteditable="true"
+      data-placeholder="내용을 입력하세요..."
+      @paste="handlePaste"
+    ></div>
+
+  </div>
 </template>
 
 <script setup>
@@ -16,6 +47,35 @@ import { isImage } from '../utils.js'
 
 const emit = defineEmits(['inlineFilesAdded'])
 const editorEl = ref(null)
+
+// 현재 툴바에서 선택된 글자 색상입니다. 초기값은 검정(#000000)입니다.
+// ref()는 안드로이드의 LiveData처럼, 값이 바뀌면 화면도 자동으로 업데이트됩니다.
+const selectedColor = ref('#000000')
+
+// 색상 팝업이 열리기 직전에 에디터의 현재 선택 영역(드래그한 텍스트)을 저장합니다.
+// 팝업이 열리면 에디터 포커스가 사라지고 선택이 풀리기 때문에, 미리 저장해둬야 합니다.
+let savedRange = null
+function saveSelection() {
+  const sel = window.getSelection() // 현재 브라우저에서 선택된 텍스트 정보를 가져옵니다.
+  if (sel && sel.rangeCount > 0) {
+    savedRange = sel.getRangeAt(0).cloneRange() // 선택 범위를 복사해서 저장합니다.
+  }
+}
+
+// 색상 팝업에서 색상을 고른 뒤 호출됩니다.
+// 저장해둔 선택 영역을 복원하고, 거기에 선택한 색상을 적용합니다.
+function applyColor() {
+  editorEl.value.focus() // 에디터에 포커스를 돌려줍니다.
+  if (savedRange) {
+    // 저장해둔 선택 영역을 다시 활성화합니다.
+    const sel = window.getSelection()
+    sel.removeAllRanges()
+    sel.addRange(savedRange)
+  }
+  // execCommand('foreColor')는 선택된 텍스트에 글자 색상을 적용하는 브라우저 내장 명령입니다.
+  // 안드로이드의 SpannableString에 ForegroundColorSpan을 적용하는 것과 비슷합니다.
+  document.execCommand('foreColor', false, selectedColor.value)
+}
 
 function handlePaste(event) {
   const imageFiles = getClipboardImageFiles(event)
@@ -203,3 +263,68 @@ function makeImagesResizable(files) {
 
 defineExpose({ getMarkdown, setContent })
 </script>
+
+<!-- scoped: 이 스타일은 ContentEditor.vue 안에서만 적용됩니다. 다른 파일에 영향을 주지 않습니다. -->
+<style scoped>
+/* 툴바와 글쓰기 영역을 위아래로 배치하는 컨테이너 */
+.editor-wrapper {
+  display: flex;           /* 자식 요소들을 가로/세로로 배치하는 레이아웃 방식입니다. */
+  flex-direction: column;  /* 세로 방향(위→아래)으로 배치합니다. */
+}
+
+/* 서식 도구 모음(툴바) */
+.editor-toolbar {
+  display: flex;
+  align-items: center;     /* 버튼들을 세로 중앙 정렬합니다. */
+  padding: 4px 8px;
+  border: 1px solid #ced4da;
+  border-bottom: none;     /* 아래쪽 테두리는 글쓰기 영역과 겹치므로 제거합니다. */
+  border-radius: 4px 4px 0 0;  /* 위쪽 모서리만 둥글게 합니다. */
+  background: #f8f9fa;
+  gap: 4px;
+}
+
+/* 툴바가 있을 때, 글쓰기 영역의 위쪽 모서리는 직각으로 맞춥니다. */
+.editor-toolbar + .content-editor {
+  border-radius: 0 0 4px 4px;
+}
+
+/* 글자 색상 버튼 영역 */
+.toolbar-color-wrap {
+  position: relative;      /* 안에 있는 color input을 이 영역 기준으로 배치하기 위해 씁니다. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;       /* 버튼 클릭 시 글자가 선택되지 않도록 합니다. */
+}
+
+.toolbar-color-wrap:hover {
+  background: #e2e6ea;
+}
+
+/* "A" 글자 아이콘. 아래쪽 3px 테두리가 현재 선택된 색상을 나타냅니다. */
+.color-icon {
+  font-weight: bold;
+  font-size: 14px;
+  line-height: 1;
+  border-bottom: 3px solid #000000;  /* 기본값은 검정. :style로 동적으로 바뀝니다. */
+  padding-bottom: 2px;
+}
+
+/* 색상 선택 input을 "A" 아이콘 영역 전체에 투명하게 덮어씌웁니다. */
+/* 이렇게 하면 "A" 버튼 어디를 클릭해도 색상 팝업이 열립니다. */
+.toolbar-color-wrap input[type="color"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;              /* 투명하게 숨깁니다. (하지만 클릭은 됩니다.) */
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+</style>
