@@ -28,7 +28,8 @@
       "Bash(Get-ChildItem -Path \"d:\\\\officeWebBoard\" -Recurse -Force)",
       "Bash(Select-Object FullName)",
       "Bash(grep -E '\\\\.\\(js|json|sql\\)$')",
-      "WebSearch"
+      "WebSearch",
+      "Bash(node -e ' *)"
     ],
     "additionalDirectories": [
       "d:\\officeWebBoard\\src"

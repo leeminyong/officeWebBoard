@@ -220,8 +220,14 @@ function getMarkdown() {
   let md = td.turndown(clone.innerHTML)
 
   // 3단계: 임시 표시 자리에 1단계에서 저장해둔 원본 style 색상 코드를 다시 넣습니다.
+  // [중요] 예전에는 `\n\n${html}\n\n` 처럼 태그 앞뒤에 빈 줄(\n\n = 줄바꿈 2개)을 강제로 넣었습니다.
+  //        그 결과 <span style="..."> 로 감싸진 글자(예: "(완료)")가 항상 다음 줄로 떨어져서,
+  //        사용자가 수정모드에서 줄을 합쳐도 저장하면 다시 빈 줄이 생기는 문제가 있었습니다.
+  //        이제는 빈 줄을 넣지 않고 태그(html)만 원래 자리에 그대로 넣습니다.
+  //        임시 표시(RAWHTML0END 등)는 원래 태그가 있던 그 위치에 들어있으므로,
+  //        사용자가 같은 줄에 붙이면 같은 줄로, 줄을 나누면 나뉜 채로 — 편집한 그대로 저장됩니다.
   htmlBlocks.forEach((html, i) => {
-    md = md.replace(`RAWHTML${i}END`, `\n\n${html}\n\n`)
+    md = md.replace(`RAWHTML${i}END`, html)
   })
 
   return md
