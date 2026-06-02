@@ -72,6 +72,14 @@ function applyColor() {
     sel.removeAllRanges()
     sel.addRange(savedRange)
   }
+  // styleWithCSS : 색상을 어떤 형태로 넣을지 정하는 설정입니다.
+  // false(기본)면 색을 옛날 방식인 <font color="..."> 태그로 넣습니다.
+  // 그런데 저장할 때 색을 지켜내는 코드(getMarkdown의 querySelectorAll('[style]'))는
+  // style 속성이 붙은 요소만 챙기기 때문에, <font color>로 들어간 색은 저장 중에 버려집니다.
+  // 그래서 true로 켜서, 색이 <span style="color: ..."> 형태로 들어가게 만듭니다.
+  // 이러면 기존 보존 코드가 색을 자동으로 지켜냅니다.
+  document.execCommand('styleWithCSS', false, true)
+
   // execCommand('foreColor')는 선택된 텍스트에 글자 색상을 적용하는 브라우저 내장 명령입니다.
   // 안드로이드의 SpannableString에 ForegroundColorSpan을 적용하는 것과 비슷합니다.
   document.execCommand('foreColor', false, selectedColor.value)
