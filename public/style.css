@@ -71,7 +71,7 @@ a { color: inherit; text-decoration: none; }
   top: 56px;
   left: 0;
   bottom: 0;
-  width: 200px;
+  width: 220px;
   padding: 20px 12px;
   background: #fff;
   border-right: 1px solid #dfe3ea;
@@ -88,6 +88,10 @@ a { color: inherit; text-decoration: none; }
   font-size: .94rem;
   font-weight: 600;
   transition: background .15s, color .15s;
+  /* 텍스트가 두 줄로 넘어가지 않도록 한 줄로 고정합니다. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* board-item-wrap으로 감싸면서 이 규칙은 board-item-wrap에서 처리합니다. */
 /* .side-menu-item + .side-menu-item { margin-top: 6px; } */
@@ -178,6 +182,13 @@ a { color: inherit; text-decoration: none; }
   color: #666 !important;
   min-height: 36px !important;
   padding: 7px 12px !important;
+}
+/* ::before : 요소 앞에 내용을 추가하는 CSS 문법입니다. 실제 텍스트 데이터를 바꾸지 않고 화면에만 표시됩니다. */
+/* └ 는 트리 구조를 나타내는 기호입니다. */
+.side-menu-sub-item::before {
+  content: '└ ';
+  font-size: .8rem;
+  opacity: 0.5;
 }
 .side-menu-sub-item:hover { color: #1a73e8 !important; }
 .side-menu-sub-item.active { color: #1a73e8 !important; }
@@ -306,9 +317,9 @@ a { color: inherit; text-decoration: none; }
 
 /* ── 컨테이너 ── */
 .container {
-  /* 사이드바(200px) + 여백(32px) = 232px을 왼쪽에서 띄우고, 오른쪽은 32px만 남겨 공간을 꽉 채웁니다. */
+  /* 사이드바(220px) + 여백(32px) = 252px을 왼쪽에서 띄우고, 오른쪽은 32px만 남겨 공간을 꽉 채웁니다. */
   /* max-width를 제거해서 너비 제한 없이 오른쪽 끝까지 늘어나도록 했습니다. */
-  margin: 32px 0 32px 200px;
+  margin: 32px 0 32px 220px;
   padding: 0;
 }
 
@@ -821,7 +832,7 @@ textarea.form-control { resize: vertical; min-height: 200px; }
 /* ── 반응형 ── */
 @media (max-width: 1120px) {
   .container {
-    margin-left: 200px;
+    margin-left: 220px;
     margin-right: 0;
   }
 }
