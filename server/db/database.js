@@ -63,6 +63,14 @@ db.exec(`
   );
 `);
 
+// boards 테이블에 parent_key 컬럼이 없으면 추가합니다.
+// parent_key : 하위 메뉴의 부모 게시판 key입니다. 최상위 메뉴는 NULL입니다.
+// ALTER TABLE : 이미 만들어진 테이블에 새 컬럼을 추가하는 SQL 명령입니다.
+const boardColumns = db.prepare('PRAGMA table_info(boards)').all().map(col => col.name);
+if (!boardColumns.includes('parent_key')) {
+  db.exec('ALTER TABLE boards ADD COLUMN parent_key TEXT DEFAULT NULL');
+}
+
 const postColumns = db.prepare('PRAGMA table_info(posts)').all().map(col => col.name);
 if (!postColumns.includes('board')) {
   db.exec("ALTER TABLE posts ADD COLUMN board TEXT NOT NULL DEFAULT 'project'");

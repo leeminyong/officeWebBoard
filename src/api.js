@@ -8,15 +8,17 @@ export async function fetchBoards() {
 }
 
 // 새 게시판을 서버에 추가하는 함수입니다.
-// label : 사용자가 입력한 게시판 이름 (예: '공지사항')
-// 반환값: { ok: true/false, data: { key, label } 또는 { error: '...' } }
-export async function addBoard(label) {
+// label     : 사용자가 입력한 게시판 이름 (예: '공지사항')
+// parentKey : 하위 메뉴로 추가할 때 부모 게시판 key입니다. 없으면 null(최상위 메뉴).
+// 반환값: { ok: true/false, data: { key, label, parent_key } 또는 { error: '...' } }
+export async function addBoard(label, parentKey = null) {
   const res = await fetch('/api/boards', {
     method: 'POST',
     // Content-Type: 'application/json' : 서버에 JSON 형식으로 데이터를 보낸다는 표시입니다.
     headers: { 'Content-Type': 'application/json' },
     // JSON.stringify() : 자바스크립트 객체를 JSON 문자열로 변환합니다. (안드로이드의 Gson.toJson()과 비슷)
-    body: JSON.stringify({ label }),
+    // parentKey 가 null 이면 서버에서도 NULL로 저장되어 최상위 메뉴가 됩니다.
+    body: JSON.stringify({ label, parentKey }),
   })
   return { ok: res.ok, data: await res.json() }
 }

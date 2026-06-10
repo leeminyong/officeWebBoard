@@ -1,7 +1,8 @@
 @echo off
 setlocal
 
-cd /d "%~dp0"
+rem scripts\ 폴더 기준으로 한 단계 위(프로젝트 루트)로 이동합니다.
+cd /d "%~dp0.."
 
 set "NODE_EXE=C:\Users\USER\AppData\Local\Programs\nodejs\node.exe"
 if not exist "%NODE_EXE%" set "NODE_EXE=node"
@@ -15,8 +16,8 @@ if %errorlevel%==0 (
   exit /b 0
 )
 
-if not exist "server.js" (
-  echo Cannot find server.js in this folder:
+if not exist "server\server.js" (
+  echo Cannot find server\server.js in this folder:
   cd
   pause
   exit /b 1
@@ -24,5 +25,5 @@ if not exist "server.js" (
 
 echo Starting office web board...
 echo Open this address in your browser: http://192.168.0.139:3000
-"%NODE_EXE%" server.js
+"%NODE_EXE%" server\server.js
 pause

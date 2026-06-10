@@ -2,67 +2,133 @@
   <!-- aside : 화면 왼쪽에 고정된 사이드바 영역입니다. HTML 주석은 이렇게 작성합니다. -->
   <aside class="side-menu" aria-label="주요 메뉴">
 
-    <!-- v-for : boards 배열을 순서대로 반복해서 메뉴 항목을 만듭니다. -->
-    <!-- :key="board.key" : Vue가 각 항목을 구분할 수 있도록 고유 key를 지정합니다. -->
-    <div
-      v-for="board in boards"
-      :key="board.key"
-      class="board-item-wrap"
-    >
-      <!-- 편집 모드일 때: editingKey가 이 게시판의 key와 같으면 입력 폼을 보여줍니다. -->
-      <!-- v-if : 조건이 true일 때만 이 영역을 그립니다. (안드로이드의 View.VISIBLE/GONE과 비슷) -->
-      <template v-if="editingKey === board.key">
-        <div class="edit-board-form">
-          <!-- ref="editInputEl" : 이 input 요소를 직접 제어할 때 사용합니다. (포커스 이동용) -->
-          <!-- v-model="editName" : 입력 값과 editName 변수를 양방향으로 연결합니다. -->
-          <!-- @keyup.enter : Enter 키를 누르면 confirmRename()을 실행합니다. -->
-          <!-- @keyup.esc : Esc 키를 누르면 cancelEdit()를 실행합니다. -->
-          <input
-            ref="editInputEl"
-            v-model="editName"
-            class="add-board-input"
-            placeholder="게시판 이름"
-            maxlength="20"
-            @keyup.enter="confirmRename(board.key)"
-            @keyup.esc="cancelEdit"
-          />
-          <div class="edit-board-actions">
-            <!-- 이름 변경 확인 버튼 -->
-            <button class="add-board-confirm" @click="confirmRename(board.key)">변경</button>
-            <!-- 삭제 버튼: 빨간색으로 강조해서 위험한 동작임을 알려줍니다. -->
-            <button class="board-delete-btn" @click="confirmDelete(board.key, board.label)">삭제</button>
-            <!-- 취소 버튼 -->
-            <button class="add-board-cancel" @click="cancelEdit">취소</button>
+    <!-- boardTree 배열을 반복합니다. 각 board 는 부모 메뉴이며 children 배열에 하위 메뉴가 있습니다. -->
+    <!-- v-for : 배열을 순서대로 반복해서 같은 모양의 HTML을 여러 개 만듭니다. -->
+    <div v-for="board in boardTree" :key="board.key">
+
+      <!-- ── 부모 메뉴 항목 ── -->
+      <!-- :class="{ 'item-active': ... }" : 현재 선택된 게시판이면 item-active 클래스를 추가합니다. -->
+      <!-- item-active 가 있으면 래퍼 전체(버튼 영역 포함)에 파란 배경이 적용됩니다. -->
+      <div class="board-item-wrap" :class="{ 'item-active': currentBoard === board.key }">
+
+        <!-- 편집 모드일 때: editingKey가 이 게시판의 key와 같으면 입력 폼을 보여줍니다. -->
+        <template v-if="editingKey === board.key">
+          <div class="edit-board-form">
+            <!-- ref="editInputEl" : 이 input 요소를 직접 제어할 때 씁니다. (포커스 이동용) -->
+            <input
+              ref="editInputEl"
+              v-model="editName"
+              class="add-board-input"
+              placeholder="게시판 이름"
+              maxlength="20"
+              @keyup.enter="confirmRename(board.key)"
+              @keyup.esc="cancelEdit"
+            />
+            <div class="edit-board-actions">
+              <button class="add-board-confirm" @click="confirmRename(board.key)">변경</button>
+              <button class="board-delete-btn" @click="confirmDelete(board.key, board.label)">삭제</button>
+              <button class="add-board-cancel" @click="cancelEdit">취소</button>
+            </div>
           </div>
+        </template>
+
+        <!-- 일반 모드일 때: 메뉴 링크 + 편집 버튼(조건부) + 폴더 버튼 -->
+        <template v-else>
+          <!-- RouterLink : 클릭 시 페이지를 이동하는 링크입니다. -->
+          <RouterLink
+            class="side-menu-item"
+            :class="{ active: currentBoard === board.key }"
+            :to="board.key === 'project' ? '/' : `/?board=${board.key}`"
+          >{{ board.label }}</RouterLink>
+
+          <!-- 편집 버튼: 사용자가 추가한 게시판(key가 'board_'로 시작)에만 표시합니다. -->
+          <button
+            v-if="isCustomBoard(board.key)"
+            class="board-edit-btn"
+            title="게시판 이름 변경 / 삭제"
+            @click="startEdit(board)"
+          >✏️</button>
+
+          <!-- 폴더 버튼: 모든 메뉴에 표시됩니다. 클릭하면 하위 메뉴 추가 입력 폼이 열립니다. -->
+          <!-- addingSubOf === board.key 이면 같은 버튼을 다시 누른 것이므로 폼을 닫습니다. (토글) -->
+          <button
+            class="board-subfolder-btn"
+            :class="{ active: addingSubOf === board.key }"
+            title="하위 메뉴 추가"
+            @click="startAddSub(board.key)"
+          >📁</button>
+        </template>
+      </div>
+
+      <!-- ── 하위 메뉴 항목들 ── -->
+      <!-- board.children : 이 부모 메뉴에 속한 하위 메뉴 배열입니다. -->
+      <div
+        v-for="child in board.children"
+        :key="child.key"
+        class="board-item-wrap sub-item"
+        :class="{ 'item-active': currentBoard === child.key }"
+      >
+        <!-- 하위 메뉴 편집 모드 -->
+        <template v-if="editingKey === child.key">
+          <div class="edit-board-form">
+            <input
+              ref="editInputEl"
+              v-model="editName"
+              class="add-board-input"
+              placeholder="게시판 이름"
+              maxlength="20"
+              @keyup.enter="confirmRename(child.key)"
+              @keyup.esc="cancelEdit"
+            />
+            <div class="edit-board-actions">
+              <button class="add-board-confirm" @click="confirmRename(child.key)">변경</button>
+              <button class="board-delete-btn" @click="confirmDelete(child.key, child.label)">삭제</button>
+              <button class="add-board-cancel" @click="cancelEdit">취소</button>
+            </div>
+          </div>
+        </template>
+
+        <!-- 하위 메뉴 일반 모드 -->
+        <template v-else>
+          <RouterLink
+            class="side-menu-item side-menu-sub-item"
+            :class="{ active: currentBoard === child.key }"
+            :to="`/?board=${child.key}`"
+          >{{ child.label }}</RouterLink>
+
+          <!-- 하위 메뉴도 사용자 추가 항목이면 편집 버튼을 표시합니다. -->
+          <button
+            v-if="isCustomBoard(child.key)"
+            class="board-edit-btn"
+            title="게시판 이름 변경 / 삭제"
+            @click="startEdit(child)"
+          >✏️</button>
+        </template>
+      </div>
+
+      <!-- ── 하위 메뉴 추가 입력 폼 ── -->
+      <!-- addingSubOf === board.key 일 때만 이 부모 메뉴 아래에 입력 폼이 나타납니다. -->
+      <div v-if="addingSubOf === board.key" class="add-board-form add-submenu-form">
+        <!-- ref="subInputEl" : v-for 안에 있어서 배열로 수집됩니다. [0]으로 첫 번째 요소에 접근합니다. -->
+        <input
+          ref="subInputEl"
+          v-model="newSubName"
+          class="add-board-input"
+          placeholder="하위 메뉴 이름"
+          maxlength="20"
+          @keyup.enter="confirmAddSub"
+          @keyup.esc="cancelAddSub"
+        />
+        <div class="add-board-actions">
+          <button class="add-board-confirm" @click="confirmAddSub">확인</button>
+          <button class="add-board-cancel" @click="cancelAddSub">취소</button>
         </div>
-      </template>
+      </div>
 
-      <!-- 일반 모드일 때: RouterLink(메뉴 링크)와 편집 버튼을 나란히 보여줍니다. -->
-      <!-- v-else : 바로 위의 v-if가 false일 때 표시됩니다. -->
-      <template v-else>
-        <!-- RouterLink : 클릭 시 페이지를 이동하는 링크입니다. (안드로이드의 startActivity()와 비슷) -->
-        <!-- :class="{ active: ... }" : 현재 게시판이면 'active' 클래스를 추가해서 파란색으로 표시합니다. -->
-        <RouterLink
-          class="side-menu-item"
-          :class="{ active: currentBoard === board.key }"
-          :to="board.key === 'project' ? '/' : `/?board=${board.key}`"
-        >{{ board.label }}</RouterLink>
-
-        <!-- 편집 버튼: 사용자가 추가한 게시판(key가 'board_'로 시작)에만 표시합니다. -->
-        <!-- v-if="isCustomBoard(board.key)" : 기본 게시판(프로젝트, 유지보수 등)에는 편집 버튼을 숨깁니다. -->
-        <!-- CSS로 마우스를 올렸을 때만 나타나도록 설정합니다. -->
-        <button
-          v-if="isCustomBoard(board.key)"
-          class="board-edit-btn"
-          title="게시판 이름 변경 / 삭제"
-          @click="startEdit(board)"
-        >✏️</button>
-      </template>
     </div>
 
     <!-- 게시판 추가 입력 폼: isAdding이 true일 때만 표시됩니다. -->
     <div v-if="isAdding" class="add-board-form">
-      <!-- ref="inputEl" : 이 input 요소를 직접 제어할 때 사용합니다. (포커스 이동 등) -->
       <input
         ref="inputEl"
         v-model="newBoardName"
@@ -89,57 +155,61 @@
 // computed : 다른 값이 바뀔 때 자동으로 재계산되는 읽기전용 값입니다.
 // nextTick : Vue가 화면을 다시 그린 직후에 코드를 실행할 때 사용합니다.
 // ref : 반응형 변수를 만들 때 사용합니다.
-// onMounted : 컴포넌트가 화면에 처음 표시될 때 실행할 코드를 등록합니다. (안드로이드의 onResume과 비슷)
+// onMounted : 컴포넌트가 화면에 처음 표시될 때 실행할 코드를 등록합니다.
 import { computed, nextTick, onMounted, ref } from 'vue'
-// useRoute : 현재 URL 정보를, useRouter : 페이지 이동 함수를 제공합니다.
 import { useRoute, useRouter } from 'vue-router'
-// useBoards : 게시판 목록 상태와 추가/수정/삭제 함수를 제공하는 ViewModel composable입니다.
 import { useBoards } from '../composables/useBoards.js'
 
 const route  = useRoute()
 const router = useRouter()
 
-// boards : 게시판 목록 배열, boardMap : { key: label } 객체
-// addBoard / renameBoard / deleteBoard : 각각 추가/수정/삭제 함수
-// loadBoards : 서버에서 최신 게시판 목록을 가져오는 함수
 const { boards, boardMap, addBoard, renameBoard, deleteBoard, loadBoards } = useBoards()
 
-// 사이드바가 화면에 처음 나타날 때 서버에서 실제 게시판 목록을 가져옵니다.
-// 로그인 전에는 이 컴포넌트가 숨겨져 있으므로, 여기서 fetch가 실행될 때는 반드시 로그인된 상태입니다.
 onMounted(loadBoards)
 
-// currentBoard : 현재 URL의 ?board= 값을 읽어서 어떤 게시판이 활성화(파란색)될지 판단합니다.
-// boardMap 체크를 없앴습니다. boardMap은 서버 응답이 올 때까지 사용자 추가 게시판을 모르기 때문에
-// 체크하면 사용자 추가 게시판일 때 항상 'project'가 활성화되는 문제가 있었습니다.
-// || 'project' : board 값이 없으면(URL에 ?board= 가 없으면) 기본값 'project'를 사용합니다.
-const currentBoard = computed(() =>
-  route.query.board || 'project'
-)
+// currentBoard : 현재 URL의 ?board= 값을 읽어서 어떤 메뉴가 활성화(파란색)될지 판단합니다.
+const currentBoard = computed(() => route.query.board || 'project')
+
+// boardTree : boards 배열을 부모-자식 트리 구조로 변환합니다.
+// parent_key 가 없는 항목이 최상위 메뉴, parent_key 가 있는 항목이 하위 메뉴입니다.
+// 결과 예시:
+//   [
+//     { key: 'project', label: '프로젝트', children: [] },
+//     { key: 'board_1', label: '앱팀', children: [
+//       { key: 'board_2', label: 'iOS', parent_key: 'board_1' }
+//     ]}
+//   ]
+const boardTree = computed(() => {
+  // filter() : 조건에 맞는 항목만 남긴 새 배열을 만듭니다.
+  // !b.parent_key : parent_key 가 null, undefined, '' 이면 true → 최상위 메뉴입니다.
+  const topLevel = boards.value.filter(b => !b.parent_key)
+
+  // map() : 배열의 각 항목을 변환해서 새 배열을 만듭니다.
+  // 각 최상위 메뉴에 children 배열을 추가합니다.
+  return topLevel.map(b => ({
+    ...b,
+    // c.parent_key === b.key : 이 부모의 key 와 같은 parent_key 를 가진 항목이 하위 메뉴입니다.
+    children: boards.value.filter(c => c.parent_key === b.key),
+  }))
+})
 
 // isCustomBoard : 사용자가 추가한 게시판인지 확인하는 함수입니다.
-// key가 'board_'로 시작하면 사용자 추가 게시판입니다. (서버에서 'board_타임스탬프' 형태로 만듭니다.)
-// startsWith() : 문자열이 특정 문자로 시작하는지 확인합니다. (Java의 String.startsWith()와 동일)
+// key가 'board_'로 시작하면 사용자 추가 게시판입니다.
 function isCustomBoard(key) {
   return key.startsWith('board_')
 }
 
-// ── 게시판 추가 UI 상태 ────────────────────────────────────
+// ── 최상위 게시판 추가 UI 상태 ────────────────────────────
 
-// isAdding : 추가 입력 폼을 보여줄지 여부입니다.
 const isAdding     = ref(false)
-// newBoardName : 사용자가 입력 중인 새 게시판 이름입니다.
 const newBoardName = ref('')
-// inputEl : 추가 input 요소를 직접 제어하기 위한 참조입니다. (안드로이드의 findViewById()와 비슷)
 const inputEl      = ref(null)
 
-// startAdd : "게시판 추가하기" 버튼 클릭 시 입력 폼을 열고 커서를 이동합니다.
 async function startAdd() {
-  // 편집 중인 게시판이 있으면 편집 모드를 먼저 닫습니다.
   cancelEdit()
+  cancelAddSub()
   isAdding.value     = true
   newBoardName.value = ''
-  // nextTick() : Vue가 DOM을 업데이트한 직후에 실행합니다.
-  // 입력 폼이 화면에 그려진 뒤 포커스를 줘야 하기 때문입니다.
   await nextTick()
   inputEl.value?.focus()
 }
@@ -153,6 +223,7 @@ async function confirmAdd() {
   const name = newBoardName.value.trim()
   if (!name) return
   try {
+    // parentKey 없이 호출하면 최상위 메뉴로 추가됩니다.
     const result = await addBoard(name)
     if (result.ok) {
       cancelAdd()
@@ -164,35 +235,77 @@ async function confirmAdd() {
   }
 }
 
-// ── 게시판 편집 UI 상태 ────────────────────────────────────
+// ── 하위 메뉴 추가 UI 상태 ────────────────────────────────
 
-// editingKey : 현재 편집 중인 게시판의 key입니다. null이면 편집 모드가 아닙니다.
-const editingKey  = ref(null)
-// editName : 편집 중인 새 이름을 담는 입력 변수입니다.
-const editName    = ref('')
-// editInputEl : 편집 input 요소를 직접 제어하기 위한 참조입니다.
-const editInputEl = ref(null)
+// addingSubOf : 폴더(📁) 버튼을 클릭한 부모 메뉴의 key입니다. null이면 폼이 닫혀 있습니다.
+const addingSubOf = ref(null)
+// newSubName : 하위 메뉴 이름 입력 변수입니다.
+const newSubName  = ref('')
+// subInputEl : 하위 메뉴 이름 입력창 참조입니다.
+// v-for 안에 있어서 Vue 3는 배열로 수집합니다. [0]으로 현재 활성 입력창을 씁니다.
+const subInputEl  = ref(null)
 
-// startEdit : 연필(✏️) 버튼 클릭 시 해당 게시판을 편집 모드로 전환합니다.
-// board : { key, label } 객체
-async function startEdit(board) {
-  // 추가 폼이 열려 있으면 닫습니다.
+// startAddSub : 📁 폴더 버튼 클릭 시 해당 부모 메뉴 아래에 입력 폼을 엽니다.
+// 이미 열린 부모의 폴더 버튼을 다시 누르면 폼을 닫습니다. (토글 방식)
+async function startAddSub(parentKey) {
+  if (addingSubOf.value === parentKey) {
+    cancelAddSub()
+    return
+  }
+  cancelEdit()
   cancelAdd()
-  editingKey.value = board.key
-  // 현재 이름을 입력칸에 미리 채워줍니다.
-  editName.value   = board.label
+  addingSubOf.value = parentKey
+  newSubName.value  = ''
   await nextTick()
-  editInputEl.value?.focus()
+  // v-for 안의 ref 는 배열이므로 [0] 으로 첫 번째(유일한) 요소에 접근합니다.
+  const el = Array.isArray(subInputEl.value) ? subInputEl.value[0] : subInputEl.value
+  el?.focus()
 }
 
-// cancelEdit : 편집 모드를 취소하고 원래 상태로 돌아갑니다.
+function cancelAddSub() {
+  addingSubOf.value = null
+  newSubName.value  = ''
+}
+
+async function confirmAddSub() {
+  const name = newSubName.value.trim()
+  if (!name) return
+  try {
+    // addBoard(이름, 부모key) : 두 번째 인자로 부모 게시판 key를 넘겨 하위 메뉴로 만듭니다.
+    const result = await addBoard(name, addingSubOf.value)
+    if (result.ok) {
+      cancelAddSub()
+    } else {
+      alert(result.error)
+    }
+  } catch {
+    alert('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.')
+  }
+}
+
+// ── 게시판 편집 UI 상태 ────────────────────────────────────
+
+const editingKey  = ref(null)
+const editName    = ref('')
+// editInputEl : v-for 가 두 곳(부모/자식)에 있으므로 Vue 3 가 배열로 수집합니다.
+const editInputEl = ref(null)
+
+async function startEdit(board) {
+  cancelAdd()
+  cancelAddSub()
+  editingKey.value = board.key
+  editName.value   = board.label
+  await nextTick()
+  // 배열일 때 [0]으로 첫 번째(현재 활성) 입력창에 접근합니다.
+  const el = Array.isArray(editInputEl.value) ? editInputEl.value[0] : editInputEl.value
+  el?.focus()
+}
+
 function cancelEdit() {
   editingKey.value = null
   editName.value   = ''
 }
 
-// confirmRename : "변경" 버튼 또는 Enter 키 입력 시 이름을 수정합니다.
-// key : 수정할 게시판의 식별자
 async function confirmRename(key) {
   const name = editName.value.trim()
   if (!name) return
@@ -208,19 +321,12 @@ async function confirmRename(key) {
   }
 }
 
-// confirmDelete : "삭제" 버튼 클릭 시 확인 대화상자를 보여주고 삭제를 진행합니다.
-// key : 삭제할 게시판의 식별자, label : 확인 메시지에 보여줄 게시판 이름
 async function confirmDelete(key, label) {
-  // confirm() : 브라우저 기본 확인창을 보여줍니다. 확인을 누르면 true, 취소를 누르면 false입니다.
-  // 안드로이드의 AlertDialog와 비슷한 역할입니다.
   if (!confirm(`"${label}" 게시판을 삭제하시겠습니까?\n\n이 게시판의 게시글과 첨부파일도 모두 삭제됩니다.`)) return
   try {
     const result = await deleteBoard(key)
     if (result.ok) {
       cancelEdit()
-      // 현재 보고 있던 게시판이 삭제된 경우, 기본 게시판(프로젝트)으로 이동합니다.
-      // currentBoard.value === key : 지금 보고 있던 게시판이 삭제된 것인지 확인합니다.
-      // router.push('/') : 프로젝트 게시판 화면으로 이동합니다. (안드로이드의 startActivity()와 비슷)
       if (currentBoard.value === key) {
         router.push('/')
       }

@@ -41,16 +41,18 @@ export function useBoards() {
   )
 
   // addBoard : 새 게시판을 서버에 저장하고 목록에 추가하는 함수입니다.
-  // label : 사용자가 입력한 게시판 이름 (예: '공지사항')
-  async function addBoard(label) {
+  // label     : 사용자가 입력한 게시판 이름 (예: '공지사항')
+  // parentKey : 하위 메뉴로 추가할 때 부모 게시판 key. 없으면 null(최상위 메뉴).
+  async function addBoard(label, parentKey = null) {
     // try/catch : 서버 응답이 JSON이 아닌 경우(예: 서버 미시작)에도 오류가 밖으로 전달되게 합니다.
     try {
-      // 서버에 새 게시판 추가를 요청합니다.
-      const result = await apiAddBoard(label)
+      // 서버에 새 게시판 추가를 요청합니다. parentKey 를 함께 보냅니다.
+      const result = await apiAddBoard(label, parentKey)
 
       if (result.ok) {
         // 스프레드 연산자(...) : 기존 배열을 복사하고 새 항목을 추가합니다.
         // boards.value = [...boards.value, result.data] : 기존 목록 끝에 새 게시판을 붙입니다.
+        // result.data 에는 { key, label, parent_key } 가 들어있습니다.
         boards.value = [...boards.value, result.data]
         return { ok: true }
       }

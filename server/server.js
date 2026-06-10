@@ -2,7 +2,7 @@ const express = require('express');
 const multer  = require('multer');
 const path    = require('path');
 const fs      = require('fs');
-const db      = require('./database');
+const db      = require('./db/database');
 // express-session : 로그인 상태를 서버 메모리에 기억하는 라이브러리입니다.
 // 안드로이드의 SharedPreferences처럼 "이 사람은 로그인됐음"을 저장합니다.
 const session = require('express-session');
@@ -18,7 +18,8 @@ const HOST = '0.0.0.0';
 const DISPLAY_HOST = '192.168.0.139';
 
 // 첨부파일을 한곳에 보관하려고 uploads 폴더 경로를 정했습니다.
-const uploadsDir = path.join(__dirname, 'uploads');
+// server.js 가 server/ 폴더 안에 있으므로 '..' 으로 한 단계 위(프로젝트 루트)를 가리킵니다.
+const uploadsDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
 // Keep uploaded files recognizable, but add a unique suffix so same-name files do not overwrite each other.
@@ -65,8 +66,9 @@ app.use(session({
   },
 }));
 
-const distDir = path.join(__dirname, 'dist');
-app.use(express.static(fs.existsSync(distDir) ? distDir : path.join(__dirname, 'public')));
+// dist, public 도 프로젝트 루트에 있으므로 '..' 으로 한 단계 위를 가리킵니다.
+const distDir = path.join(__dirname, '..', 'dist');
+app.use(express.static(fs.existsSync(distDir) ? distDir : path.join(__dirname, '..', 'public')));
 app.use('/uploads', express.static(uploadsDir));
 
 // ── 비밀번호 해시 초기화 ───────────────────────────────────
@@ -128,16 +130,18 @@ app.use('/api', requireAuth);
 
 // ── 게시판 목록 조회 ───────────────────────────────────────
 // 프론트엔드에서 사이드바 메뉴를 그릴 때 이 API로 게시판 목록을 가져갑니다.
+// parent_key 도 함께 반환해서 프론트엔드가 부모-하위 메뉴 구조를 만들 수 있게 합니다.
 app.get('/api/boards', (req, res) => {
   // sort_order 오름차순 → created_at 오름차순 순으로 정렬해서 반환합니다.
-  const boards = db.prepare('SELECT key, label FROM boards ORDER BY sort_order ASC, created_at ASC').all();
+  const boards = db.prepare('SELECT key, label, parent_key FROM boards ORDER BY sort_order ASC, created_at ASC').all();
   res.json(boards);
 });
 
 // ── 게시판 추가 ────────────────────────────────────────────
-// 사용자가 "게시판 추가하기"로 새 메뉴를 만들 때 호출됩니다.
+// 사용자가 "게시판 추가하기" 또는 폴더 아이콘으로 새 메뉴를 만들 때 호출됩니다.
+// parentKey : 하위 메뉴로 추가할 때 부모 게시판 key를 함께 보냅니다. 없으면 최상위 메뉴입니다.
 app.post('/api/boards', (req, res) => {
-  const { label } = req.body;
+  const { label, parentKey } = req.body;
 
   // label(게시판 이름)이 없으면 오류를 반환합니다.
   if (!label?.trim()) return res.status(400).json({ error: '게시판 이름을 입력해주세요.' });
@@ -154,12 +158,18 @@ app.post('/api/boards', (req, res) => {
 
   // 현재 게시판 수를 sort_order로 사용해서 항상 맨 아래에 추가됩니다.
   const sortOrder = db.prepare('SELECT COUNT(*) as count FROM boards').get().count;
-  db.prepare('INSERT INTO boards (key, label, sort_order) VALUES (?, ?, ?)').run(key, trimmed, sortOrder);
+
+  // parentKey 가 실제로 존재하는 게시판일 때만 부모로 인정합니다.
+  // 없거나 잘못된 값이면 최상위 메뉴(NULL)로 만듭니다.
+  const resolvedParent = (parentKey && BOARDS.has(parentKey)) ? parentKey : null;
+
+  db.prepare('INSERT INTO boards (key, label, sort_order, parent_key) VALUES (?, ?, ?, ?)').run(key, trimmed, sortOrder, resolvedParent);
 
   // 서버 메모리의 BOARDS Set에도 추가해서 새 게시판에 글을 바로 쓸 수 있게 합니다.
   BOARDS.add(key);
 
-  res.json({ key, label: trimmed });
+  // parent_key 도 함께 반환해서 프론트엔드가 바로 트리 구조를 업데이트할 수 있게 합니다.
+  res.json({ key, label: trimmed, parent_key: resolvedParent });
 });
 
 // ── 게시판 이름 수정 ────────────────────────────────────────

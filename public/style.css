@@ -91,13 +91,23 @@ a { color: inherit; text-decoration: none; }
 }
 /* board-item-wrap으로 감싸면서 이 규칙은 board-item-wrap에서 처리합니다. */
 /* .side-menu-item + .side-menu-item { margin-top: 6px; } */
+/* hover/active 배경은 board-item-wrap 전체에 적용합니다. */
+/* 버튼 영역까지 포함해서 한 줄 전체가 파란 배경이 되도록 합니다. */
 .side-menu-item:hover {
-  background: #f0f6ff;
+  background: transparent;
   color: #1a73e8;
 }
 .side-menu-item.active {
-  background: #e8f0fe;
+  background: transparent;
   color: #1a73e8;
+}
+/* 래퍼 전체에 hover 배경을 적용합니다. (버튼 영역도 포함) */
+.board-item-wrap:hover {
+  background: #f0f6ff;
+}
+/* 현재 선택된 게시판 래퍼 전체에 active 배경을 적용합니다. */
+.board-item-wrap.item-active {
+  background: #e8f0fe;
 }
 
 /* ── 게시판 항목 래퍼 ── */
@@ -133,6 +143,53 @@ a { color: inherit; text-decoration: none; }
 .board-item-wrap:hover .board-edit-btn { opacity: 1; }
 /* 편집 버튼 자체에 마우스를 올리면 파란색으로 강조합니다. */
 .board-edit-btn:hover { background: #e8f0fe; color: #1a73e8; }
+
+/* ── 폴더 아이콘 버튼 (하위 메뉴 추가) ── */
+/* board-edit-btn 과 같은 방식으로 마우스를 올렸을 때만 나타납니다. */
+.board-subfolder-btn {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  padding: 0 6px;
+  border-radius: 0 6px 6px 0;
+  font-size: .82rem;
+  flex-shrink: 0;
+  transition: opacity .15s, background .15s, color .15s;
+}
+/* 마우스를 올리면 나타납니다. */
+.board-item-wrap:hover .board-subfolder-btn { opacity: 1; }
+/* 폴더 버튼 자체에 마우스를 올리면 파란색으로 강조합니다. */
+.board-subfolder-btn:hover { background: #e8f0fe; color: #1a73e8; }
+/* active : 폼이 열려 있는 동안 폴더 버튼을 항상 강조 표시합니다. */
+.board-subfolder-btn.active { opacity: 1; background: #e8f0fe; color: #1a73e8; }
+
+/* ── 하위 메뉴 항목 ── */
+/* 부모 메뉴 아래에 12px 들여쓰기로 표시됩니다. */
+.board-item-wrap.sub-item {
+  margin-top: 2px;
+  margin-left: 12px;
+}
+/* 하위 메뉴 링크: 부모 메뉴보다 약간 작고 가볍게 표시합니다. */
+.side-menu-sub-item {
+  font-size: .88rem !important;
+  font-weight: 500 !important;
+  color: #666 !important;
+  min-height: 36px !important;
+  padding: 7px 12px !important;
+}
+.side-menu-sub-item:hover { color: #1a73e8 !important; }
+.side-menu-sub-item.active { color: #1a73e8 !important; }
+
+/* ── 하위 메뉴 추가 입력 폼 ── */
+/* 폴더 버튼 클릭 시 부모 메뉴 아래에 나타나는 입력 폼입니다. */
+/* 하위 메뉴 항목과 같은 12px 들여쓰기를 줘서 들여써진 느낌이 납니다. */
+.add-submenu-form {
+  margin-left: 12px;
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
 
 /* ── 게시판 편집 폼 ── */
 /* 연필 버튼을 클릭했을 때 나타나는 이름 변경 + 삭제 폼입니다. */
@@ -881,14 +938,40 @@ textarea.form-control { resize: vertical; min-height: 200px; }
 
 /* 마우스를 올렸을 때 */
 [data-theme="dark"] .side-menu-item:hover {
-  background: #2c2e33;
+  background: transparent;
   color: #74c0fc;
 }
 
 /* 현재 선택된(활성화된) 메뉴 항목 */
 [data-theme="dark"] .side-menu-item.active {
+  background: transparent;
+  color: #74c0fc;
+}
+
+/* 래퍼 전체에 hover/active 배경 적용 (다크 모드) */
+[data-theme="dark"] .board-item-wrap:hover {
+  background: #2c2e33;
+}
+[data-theme="dark"] .board-item-wrap.item-active {
+  background: #1c3a6b;
+}
+
+/* 폴더 버튼 다크 모드 */
+[data-theme="dark"] .board-subfolder-btn:hover,
+[data-theme="dark"] .board-subfolder-btn.active {
   background: #1c3a6b;
   color: #74c0fc;
+}
+
+/* 하위 메뉴 링크 다크 모드 */
+[data-theme="dark"] .side-menu-sub-item {
+  color: #909296 !important;
+}
+[data-theme="dark"] .side-menu-sub-item:hover {
+  color: #74c0fc !important;
+}
+[data-theme="dark"] .side-menu-sub-item.active {
+  color: #74c0fc !important;
 }
 
 /* "게시판 추가하기" 버튼 */
