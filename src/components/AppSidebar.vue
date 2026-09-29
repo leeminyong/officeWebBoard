@@ -42,8 +42,9 @@
           >{{ board.label }}</RouterLink>
 
           <!-- 편집 버튼: 사용자가 추가한 게시판(key가 'board_'로 시작)에만 표시합니다. -->
+          <!-- isAdmin && : 게시판 관리는 관리자만 할 수 있으므로, 멤버에게는 이 버튼을 숨깁니다. (&& = 그리고) -->
           <button
-            v-if="isCustomBoard(board.key)"
+            v-if="isAdmin && isCustomBoard(board.key)"
             class="board-edit-btn"
             title="게시판 이름 변경 / 삭제"
             @click="startEdit(board)"
@@ -51,7 +52,9 @@
 
           <!-- 폴더 버튼: 모든 메뉴에 표시됩니다. 클릭하면 하위 메뉴 추가 입력 폼이 열립니다. -->
           <!-- addingSubOf === board.key 이면 같은 버튼을 다시 누른 것이므로 폼을 닫습니다. (토글) -->
+          <!-- v-if="isAdmin" : 하위 메뉴 추가도 관리자만 할 수 있으므로 멤버에게는 숨깁니다. -->
           <button
+            v-if="isAdmin"
             class="board-subfolder-btn"
             :class="{ active: addingSubOf === board.key }"
             title="하위 메뉴 추가"
@@ -96,9 +99,9 @@
             :to="`/?board=${child.key}`"
           >{{ child.label }}</RouterLink>
 
-          <!-- 하위 메뉴도 사용자 추가 항목이면 편집 버튼을 표시합니다. -->
+          <!-- 하위 메뉴도 사용자 추가 항목이면 편집 버튼을 표시합니다. (관리자만) -->
           <button
-            v-if="isCustomBoard(child.key)"
+            v-if="isAdmin && isCustomBoard(child.key)"
             class="board-edit-btn"
             title="게시판 이름 변경 / 삭제"
             @click="startEdit(child)"
@@ -144,8 +147,9 @@
       </div>
     </div>
 
-    <!-- 게시판 추가하기 버튼: isAdding이 false일 때만 표시됩니다. -->
-    <button v-else class="side-menu-add-btn" @click="startAdd">
+    <!-- 게시판 추가하기 버튼: isAdding이 false이고 관리자일 때만 표시됩니다. -->
+    <!-- v-else-if : 위의 v-if(isAdding)가 false일 때, 이 조건(isAdmin)도 맞아야 보여줍니다. 멤버에게는 보이지 않습니다. -->
+    <button v-else-if="isAdmin" class="side-menu-add-btn" @click="startAdd">
       + 게시판 추가하기
     </button>
   </aside>
@@ -159,6 +163,10 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBoards } from '../composables/useBoards.js'
+// useAuth : 로그인 상태 ViewModel 입니다. isAdmin 으로 게시판 관리 버튼(추가/편집/하위메뉴)을 관리자에게만 보여줍니다.
+import { useAuth } from '../composables/useAuth.js'
+
+const { isAdmin } = useAuth()
 
 const route  = useRoute()
 const router = useRouter()

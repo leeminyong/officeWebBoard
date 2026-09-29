@@ -94,12 +94,61 @@ if (!existingPw) {
   db.prepare("INSERT INTO settings (key, value) VALUES ('admin_password_hash', ?)").run(hash);
 }
 
+// ── 멤버 비밀번호 초기화 ───────────────────────────────────
+// 관리자 비밀번호와 같은 방식으로, 서버 첫 실행 시 멤버 비밀번호 '1996!!'를 해시로 바꿔 저장합니다.
+// 멤버는 관리자가 "👥 멤버 권한" 화면에서 체크한 게시판만 볼 수 있는 계정입니다.
+// 이미 저장돼 있으면 건너뜁니다. (나중에 DB에서 비밀번호를 바꿔도 재시작 때 덮어쓰지 않습니다.)
+const existingMemberPw = db.prepare("SELECT value FROM settings WHERE key = 'member_password_hash'").get();
+if (!existingMemberPw) {
+  const hash = bcrypt.hashSync('1996!!', 10);
+  db.prepare("INSERT INTO settings (key, value) VALUES ('member_password_hash', ?)").run(hash);
+}
+
+// ── 멤버 권한 헬퍼 ─────────────────────────────────────────
+// getMemberBoards : 멤버에게 허용된 게시판 key 배열을 돌려줍니다. 예) ['project', 'board_123']
+// settings 테이블의 'member_boards' 에 JSON 문자열(예: '["project","board_123"]')로 저장돼 있습니다.
+// JSON.parse() : JSON 문자열을 자바스크립트 배열/객체로 바꿉니다. (안드로이드의 Gson.fromJson()과 비슷)
+// filter(k => BOARDS.has(k)) : 그 사이에 삭제된 게시판 key는 빼고 돌려줍니다.
+// try/catch : 저장된 값이 깨져 있어도 서버가 멈추지 않고 빈 배열(아무 게시판도 허용 안 함)로 처리합니다.
+function getMemberBoards() {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'member_boards'").get();
+  try {
+    const list = JSON.parse(row?.value || '[]');
+    return Array.isArray(list) ? list.filter(k => BOARDS.has(k)) : [];
+  } catch {
+    return [];
+  }
+}
+
+// isAdmin : 지금 요청을 보낸 사람이 관리자로 로그인했는지 확인합니다.
+// req.session.role : 로그인할 때 저장한 'admin' 또는 'member' 값입니다.
+function isAdmin(req) {
+  return req.session?.role === 'admin';
+}
+
+// canAccessBoard : 지금 로그인한 사람이 이 게시판을 볼 수 있는지 확인합니다.
+// 관리자는 모든 게시판, 멤버는 허용된 게시판만 true 입니다.
+function canAccessBoard(req, boardKey) {
+  return isAdmin(req) || getMemberBoards().includes(boardKey);
+}
+
+// authInfo : 로그인 상태 정보를 화면(프론트엔드)에 돌려줄 모양으로 만듭니다.
+// memberBoards : 멤버일 때만 허용 게시판 목록을 넣고, 관리자는 null(제한 없음)입니다.
+//   화면은 이 값으로 "멤버가 처음 볼 게시판"을 정합니다.
+function authInfo(req) {
+  return {
+    loggedIn: !!req.session.loggedIn,
+    role: req.session.role || null,
+    memberBoards: req.session.role === 'member' ? getMemberBoards() : null,
+  };
+}
+
 // ── 로그인 상태 확인 API ───────────────────────────────────
 // 브라우저가 새로고침되거나 페이지를 이동할 때 "아직 로그인 상태인지" 확인합니다.
 // req.session.loggedIn : 로그인 성공 후 서버가 세션에 저장해둔 값입니다.
-// !! : 값을 Boolean(true/false)으로 변환합니다. undefined → false, true → true
+// 로그인 여부와 함께 role(관리자/멤버)과 멤버 허용 게시판 목록도 돌려줍니다.
 app.get('/api/auth/check', (req, res) => {
-  res.json({ loggedIn: !!req.session.loggedIn });
+  res.json(authInfo(req));
 });
 
 // ── 로그인 API ─────────────────────────────────────────────
@@ -108,15 +157,26 @@ app.get('/api/auth/check', (req, res) => {
 // 원래 비밀번호를 꺼내지 않고도 맞는지 틀린지 확인할 수 있습니다. (단방향 암호화의 특성)
 app.post('/api/login', (req, res) => {
   const { password } = req.body;
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'admin_password_hash'").get();
-  if (!row) return res.status(500).json({ error: '서버 설정 오류입니다.' });
+  const adminRow  = db.prepare("SELECT value FROM settings WHERE key = 'admin_password_hash'").get();
+  const memberRow = db.prepare("SELECT value FROM settings WHERE key = 'member_password_hash'").get();
+  if (!adminRow) return res.status(500).json({ error: '서버 설정 오류입니다.' });
 
-  const isMatch = bcrypt.compareSync(password || '', row.value);
-  if (!isMatch) return res.status(401).json({ error: '비밀번호가 틀렸습니다.' });
+  // 1단계: 관리자 비밀번호와 비교합니다. 맞으면 role = 'admin'
+  // 2단계: 아니면 멤버 비밀번호와 비교합니다. 맞으면 role = 'member'
+  // 3단계: 둘 다 아니면 null → 로그인 실패
+  // 삼항연산자(조건 ? A : B)를 이어서 써서 위 순서대로 판단합니다.
+  // memberRow && ... : 멤버 비밀번호가 저장돼 있을 때만 비교합니다.
+  const pw = password || '';
+  const role = bcrypt.compareSync(pw, adminRow.value) ? 'admin'
+    : (memberRow && bcrypt.compareSync(pw, memberRow.value)) ? 'member'
+    : null;
+  if (!role) return res.status(401).json({ error: '비밀번호가 틀렸습니다.' });
 
-  // 로그인 성공 : 세션에 로그인 여부를 기록합니다.
+  // 로그인 성공 : 세션에 로그인 여부와 로그인한 사람의 종류(role)를 기록합니다.
+  // 이후 모든 요청에서 req.session.role 을 보고 관리자/멤버 권한을 구분합니다.
   req.session.loggedIn = true;
-  res.json({ ok: true });
+  req.session.role = role;
+  res.json({ ok: true, ...authInfo(req) });
 });
 
 // ── 로그아웃 API ───────────────────────────────────────────
@@ -139,19 +199,106 @@ function requireAuth(req, res, next) {
 // 위에서 이미 처리된 /api/auth/check, /api/login, /api/logout 요청은 여기까지 오지 않습니다.
 app.use('/api', requireAuth);
 
+// ── 관리자 전용 검사 ───────────────────────────────────────
+// 게시판 추가/이름변경/삭제, 멤버 권한 설정처럼 관리자만 할 수 있는 API 앞에 붙입니다.
+// 403 : HTTP 상태 코드로 "로그인은 했지만 권한이 없음"을 뜻합니다. (401은 "로그인 안 됨")
+function requireAdmin(req, res, next) {
+  if (isAdmin(req)) return next();
+  return res.status(403).json({ error: '관리자만 사용할 수 있는 기능입니다.' });
+}
+
+// forbidBoard : "이 게시판에 권한이 없음" 응답을 보냅니다. 여러 곳에서 같은 문구를 쓰려고 함수로 뺐습니다.
+function forbidBoard(res) {
+  return res.status(403).json({ error: '이 게시판에 접근할 권한이 없습니다.' });
+}
+
+// ── 게시글 단위 권한 검사 (멤버용) ─────────────────────────
+// app.use('/api/posts/:id', ...) : /api/posts/5, /api/posts/5/pin, /api/posts/5/comments/3 처럼
+// 특정 게시글 번호가 들어간 모든 요청에서, 실제 처리 코드보다 먼저 실행됩니다.
+// 게시글이 속한 게시판을 찾아서, 멤버가 볼 수 없는 게시판이면 403으로 막습니다.
+// (글 보기·수정·삭제·고정·이동·댓글을 한 곳에서 모두 검사할 수 있어서, 각 API마다 검사 코드를 넣지 않았습니다.)
+// 첨부파일 업로드(multer)보다 먼저 실행되므로, 권한이 없으면 파일이 서버에 저장되지도 않습니다.
+app.use('/api/posts/:id', (req, res, next) => {
+  if (isAdmin(req)) return next();
+  const post = db.prepare('SELECT board FROM posts WHERE id = ?').get(req.params.id);
+  // 글이 없으면 뒤쪽 원래 API가 404(찾을 수 없음)를 돌려주도록 그대로 넘깁니다.
+  if (!post) return next();
+  if (!canAccessBoard(req, post.board)) return forbidBoard(res);
+  next();
+});
+
+// 게시글 첨부파일(/api/files/번호) : 파일 → 게시글 → 게시판 순서로 찾아서 검사합니다.
+// JOIN : 두 테이블을 연결해서 한 번에 조회하는 SQL 문법입니다. (files.post_id 와 posts.id 가 같은 줄끼리 연결)
+app.use('/api/files/:id', (req, res, next) => {
+  if (isAdmin(req)) return next();
+  const row = db.prepare('SELECT p.board FROM files f JOIN posts p ON p.id = f.post_id WHERE f.id = ?').get(req.params.id);
+  if (row && !canAccessBoard(req, row.board)) return forbidBoard(res);
+  next();
+});
+
+// 댓글 첨부파일(/api/comment-files/번호) : 파일 → 댓글 → 게시글 → 게시판 순서로 찾아서 검사합니다.
+app.use('/api/comment-files/:id', (req, res, next) => {
+  if (isAdmin(req)) return next();
+  const row = db.prepare(`
+    SELECT p.board FROM comment_files cf
+    JOIN comments c ON c.id = cf.comment_id
+    JOIN posts    p ON p.id = c.post_id
+    WHERE cf.id = ?
+  `).get(req.params.id);
+  if (row && !canAccessBoard(req, row.board)) return forbidBoard(res);
+  next();
+});
+
+// ── 멤버 권한 설정 API (관리자 전용) ───────────────────────
+// GET : 지금 멤버에게 허용된 게시판 key 목록을 돌려줍니다. 예) { boards: ['project', 'board_123'] }
+app.get('/api/member-boards', requireAdmin, (req, res) => {
+  res.json({ boards: getMemberBoards() });
+});
+
+// PUT : 관리자가 체크한 게시판 목록을 저장합니다. 요청 예) { boards: ['project', 'board_123'] }
+app.put('/api/member-boards', requireAdmin, (req, res) => {
+  // Array.isArray() : 배열인지 확인합니다. 배열이 아니면 잘못된 요청으로 봅니다.
+  if (!Array.isArray(req.body.boards)) return res.status(400).json({ error: '게시판 목록 형식이 올바르지 않습니다.' });
+  const picked = new Set(req.body.boards);
+  // 게시판 메뉴 순서(sort_order)대로 정렬해서 저장합니다.
+  // 멤버가 로그인하면 이 목록의 첫 번째 게시판이 처음 화면이 되기 때문에, 메뉴 위쪽 게시판이 먼저 오게 합니다.
+  // 존재하지 않는 key 는 자연스럽게 빠집니다.
+  const ordered = db.prepare('SELECT key FROM boards ORDER BY sort_order ASC, created_at ASC').all()
+    .map(b => b.key)
+    .filter(k => picked.has(k));
+  // INSERT … ON CONFLICT(key) DO UPDATE : 이미 저장된 값이 있으면 바꾸고, 없으면 새로 넣습니다.
+  // JSON.stringify() : 배열을 JSON 문자열로 바꿔서 한 칸(value)에 저장합니다.
+  db.prepare(`
+    INSERT INTO settings (key, value) VALUES ('member_boards', ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `).run(JSON.stringify(ordered));
+  res.json({ boards: ordered });
+});
+
 // ── 게시판 목록 조회 ───────────────────────────────────────
 // 프론트엔드에서 사이드바 메뉴를 그릴 때 이 API로 게시판 목록을 가져갑니다.
 // parent_key 도 함께 반환해서 프론트엔드가 부모-하위 메뉴 구조를 만들 수 있게 합니다.
 app.get('/api/boards', (req, res) => {
   // sort_order 오름차순 → created_at 오름차순 순으로 정렬해서 반환합니다.
   const boards = db.prepare('SELECT key, label, parent_key FROM boards ORDER BY sort_order ASC, created_at ASC').all();
-  res.json(boards);
+  if (isAdmin(req)) return res.json(boards);
+
+  // 멤버 : 허용된 게시판만 돌려줍니다.
+  // 부모 게시판은 허용하지 않고 하위 게시판만 허용한 경우, 화면 메뉴는 부모 밑에 하위를 그리기 때문에
+  // 부모가 없으면 하위 메뉴도 안 보이게 됩니다. 그래서 그런 하위 게시판은 parent_key 를 null 로 바꿔 최상위 메뉴로 보여줍니다.
+  const allowed = new Set(getMemberBoards());
+  res.json(
+    boards
+      .filter(b => allowed.has(b.key))
+      .map(b => ({ ...b, parent_key: allowed.has(b.parent_key) ? b.parent_key : null }))
+  );
 });
 
 // ── 게시판 추가 ────────────────────────────────────────────
 // 사용자가 "게시판 추가하기" 또는 폴더 아이콘으로 새 메뉴를 만들 때 호출됩니다.
 // parentKey : 하위 메뉴로 추가할 때 부모 게시판 key를 함께 보냅니다. 없으면 최상위 메뉴입니다.
-app.post('/api/boards', (req, res) => {
+// requireAdmin : 게시판 추가/이름변경/삭제는 관리자만 할 수 있습니다. (아래 PUT, DELETE 도 동일)
+app.post('/api/boards', requireAdmin, (req, res) => {
   const { label, parentKey } = req.body;
 
   // label(게시판 이름)이 없으면 오류를 반환합니다.
@@ -186,7 +333,7 @@ app.post('/api/boards', (req, res) => {
 // ── 게시판 이름 수정 ────────────────────────────────────────
 // 사용자가 추가한 게시판(key가 'board_'로 시작)의 이름을 바꿀 때 호출됩니다.
 // PUT /api/boards/:key → 특정 key의 게시판 이름을 label로 변경합니다.
-app.put('/api/boards/:key', (req, res) => {
+app.put('/api/boards/:key', requireAdmin, (req, res) => {
   const { key } = req.params;    // URL에서 게시판 key를 꺼냅니다. 예) /api/boards/board_123 → key = 'board_123'
   const { label } = req.body;   // 요청 body에서 새 이름을 꺼냅니다.
 
@@ -217,7 +364,7 @@ app.put('/api/boards/:key', (req, res) => {
 // ── 게시판 삭제 ────────────────────────────────────────────
 // 사용자가 추가한 게시판과 그 안의 게시글/댓글/첨부파일을 모두 삭제합니다.
 // DELETE /api/boards/:key → 해당 key의 게시판을 삭제합니다.
-app.delete('/api/boards/:key', (req, res) => {
+app.delete('/api/boards/:key', requireAdmin, (req, res) => {
   const { key } = req.params;
 
   // 기본 게시판은 삭제할 수 없습니다.
@@ -272,6 +419,13 @@ app.delete('/api/boards/:key', (req, res) => {
 // ── 게시글 목록 (페이지네이션 + 검색) ───────────────────────
 app.get('/api/posts', (req, res) => {
   const board  = getBoard(req.query.board);
+  // 멤버가 허용되지 않은 게시판의 목록을 요청하면 막습니다.
+  // 허용된 게시판이 하나도 없으면(관리자가 아직 체크하지 않음) 그 상황에 맞는 안내 문구를 보냅니다.
+  if (!canAccessBoard(req, board)) {
+    if (getMemberBoards().length === 0)
+      return res.status(403).json({ error: '허용된 게시판이 없습니다. 관리자에게 문의하세요.' });
+    return forbidBoard(res);
+  }
   const page   = Math.max(1, parseInt(req.query.page) || 1);
   const limit  = 10;
   const offset = (page - 1) * limit;
@@ -375,6 +529,14 @@ app.post('/api/posts', upload.array('files', 20), (req, res) => {
   // resolveBoard() : 유지보수 게시판에서 제목에 '완료'가 포함된 글은 유지보수(완료) 게시판으로 자동 배정합니다.
   const board = resolveBoard(getBoard(req.body.board), title.trim());
 
+  // 멤버가 허용되지 않은 게시판에 글을 쓰려고 하면 막습니다.
+  // 첨부파일은 이 코드보다 먼저(multer 가) 서버에 저장해 버리므로, 막을 때는 저장된 파일을 지워서 쓰레기 파일이 남지 않게 합니다.
+  // (req.files || []) : 첨부파일이 없으면 undefined 이므로 빈 배열로 바꿔서 forEach 오류를 막습니다.
+  if (!canAccessBoard(req, board)) {
+    (req.files || []).forEach(f => fs.unlink(f.path, () => {}));
+    return forbidBoard(res);
+  }
+
   const result = db.prepare('INSERT INTO posts (title, content, author, board) VALUES (?, ?, ?, ?)')
     .run(title.trim(), content.trim(), (author || '익명').trim(), board);
 
@@ -462,6 +624,8 @@ app.patch('/api/posts/:id/move', (req, res) => {
   // 이동할 게시판이 실제로 존재하는 게시판인지 확인합니다.
   const targetBoard = req.body.board;
   if (!BOARDS.has(targetBoard)) return res.status(400).json({ error: '존재하지 않는 게시판입니다.' });
+  // 멤버는 허용된 게시판으로만 옮길 수 있습니다. (원래 게시판 권한은 위의 /api/posts/:id 검사에서 이미 확인)
+  if (!canAccessBoard(req, targetBoard)) return forbidBoard(res);
 
   db.prepare('UPDATE posts SET board = ? WHERE id = ?').run(targetBoard, req.params.id);
   res.json({ board: targetBoard });

@@ -17,6 +17,19 @@
 
       <!-- 헤더 오른쪽 버튼 영역: margin-left:auto 로 오른쪽 끝에 배치됩니다. -->
       <div style="margin-left:auto;display:flex;gap:6px">
+        <!-- 👥 멤버 권한 버튼 : 관리자로 로그인했을 때만 보입니다. (v-if="isAdmin") -->
+        <!-- 누르면 멤버에게 보여줄 게시판을 체크하는 화면(/admin/member)으로 이동합니다. -->
+        <!-- :class="{ active: ... }" : 지금 그 화면에 있으면 버튼을 강조해서 표시합니다. -->
+        <button
+          v-if="isAdmin"
+          class="theme-btn"
+          :class="{ active: route.path === '/admin/member' }"
+          title="멤버에게 보여줄 게시판 설정"
+          @click="router.push('/admin/member')"
+        >👥 멤버 권한</button>
+        <!-- 멤버로 로그인했을 때는 버튼 대신 "멤버" 표시만 보여줘서, 지금 어떤 계정인지 알 수 있게 합니다. -->
+        <!-- role === 'member' : useAuth 의 role 값이 'member' 일 때만 보입니다. -->
+        <span v-else-if="role === 'member'" class="theme-btn" style="cursor:default">👤 멤버</span>
         <!-- :class="{ active: !isDark }" → isDark가 false(라이트 모드)일 때 'active' 클래스가 추가됩니다. -->
         <button class="theme-btn" :class="{ active: !isDark }" @click="setLight" title="라이트 모드로 전환">
           ☀️ 라이트
@@ -58,7 +71,8 @@ const router = useRouter()
 // route.path : 현재 URL 경로 문자열입니다. (예: '/login', '/', '/posts/5')
 // 이 값을 보고 헤더/사이드바를 보여줄지 결정합니다.
 const route = useRoute()
-const { logout } = useAuth()
+// isAdmin : 관리자인지 여부, role : 'admin' 또는 'member' (머리글의 👥 멤버 권한 버튼 / 👤 멤버 표시에 사용)
+const { logout, isAdmin, role } = useAuth()
 
 // ── 왼쪽 메뉴 숨기기 ─────────────────────────────────────────
 // 글보기 화면에서는 본문을 넓게 보기 위해 왼쪽 메뉴를 자동으로 숨기고,

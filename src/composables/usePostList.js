@@ -56,6 +56,16 @@ export function usePostList() {
       // 받아온 데이터 구조 예시: { posts: [...], pagination: { total, page, totalPages } }
       const serverResponse = await fetchPostList(pageNumber, currentBoard.value, searchKeyword.value)
 
+      // 서버가 오류를 돌려준 경우입니다. (예: 멤버가 허용되지 않은 게시판을 열었을 때 { error: '...권한이 없습니다.' })
+      // 이때 serverResponse.posts 가 없어서 그대로 쓰면 화면에서 오류가 나므로,
+      // 목록을 빈 배열로 비우고 서버가 보낸 안내 문구를 토스트로 보여준 뒤 함수를 끝냅니다.
+      if (serverResponse.error) {
+        postList.value = []
+        pageInfo.value = { total: 0, page: 1, totalPages: 0 }
+        showToast(serverResponse.error, true)
+        return
+      }
+
       // 서버에서 이미 올바른 순서로 정렬된 결과를 그대로 사용합니다.
       // 정렬 기준은 server.js의 SQL에서 처리합니다:
       //   1) 제목에 '완료'가 없는 글 먼저 (최신순)

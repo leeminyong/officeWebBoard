@@ -3,7 +3,8 @@
   <!-- display:flex + justify-content:center + align-items:center = 수평·수직 정중앙 -->
   <div class="login-wrapper">
     <div class="login-card">
-      <h2 class="login-title">🔐 관리자 로그인</h2>
+      <!-- 관리자(8514!!)와 멤버(1996!!)가 같은 입력칸을 쓰므로 제목에서 "관리자"를 뺐습니다. -->
+      <h2 class="login-title">🔐 로그인</h2>
 
       <!-- @submit.prevent : 폼 제출 시 페이지 새로고침을 막고 handleLogin 함수를 실행합니다. -->
       <!-- 안드로이드에서 버튼 onClick 이벤트 처리와 비슷합니다. -->

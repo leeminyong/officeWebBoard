@@ -46,6 +46,26 @@ export async function deleteBoard(key) {
   return { ok: res.ok, data: await res.json() }
 }
 
+// ── 멤버 권한 API (관리자 전용) ────────────────────────────
+
+// fetchMemberBoards : 멤버에게 허용된 게시판 key 목록을 가져옵니다.
+// 반환값 예시: { ok: true, data: { boards: ['project', 'board_123'] } }
+export async function fetchMemberBoards() {
+  const res = await fetch('/api/member-boards')
+  return { ok: res.ok, data: await res.json() }
+}
+
+// saveMemberBoards : 관리자가 체크한 게시판 key 목록을 서버에 저장합니다.
+// boards : 허용할 게시판 key 배열 (예: ['project', 'board_123'])
+export async function saveMemberBoards(boards) {
+  const res = await fetch('/api/member-boards', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ boards }),
+  })
+  return { ok: res.ok, data: await res.json() }
+}
+
 // ── 게시글 API ─────────────────────────────────────────────
 
 // fetchPostList : 서버에서 게시글 목록을 가져오는 함수입니다.
