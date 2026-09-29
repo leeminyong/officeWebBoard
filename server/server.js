@@ -9,6 +9,8 @@ const session = require('express-session');
 // bcryptjs : 비밀번호를 단방향 암호화(해시)하는 라이브러리입니다.
 // 해시된 값으로 원래 비밀번호를 역으로 알아낼 수 없습니다.
 const bcrypt  = require('bcryptjs');
+// todo.js : 게시판과 별도로 동작하는 개인용 할 일 앱의 서버 코드입니다. (/todo 화면, /todo-api, /todo-ws)
+const { registerTodoRoutes, attachTodoWebSocket } = require('./todo');
 
 const app  = express();
 const PORT = 3000;
@@ -70,6 +72,15 @@ app.use(session({
 const distDir = path.join(__dirname, '..', 'dist');
 app.use(express.static(fs.existsSync(distDir) ? distDir : path.join(__dirname, '..', 'public')));
 app.use('/uploads', express.static(uploadsDir));
+
+// ── 할 일 앱 연결 ──────────────────────────────────────────
+// /todo 로 접속하면 todo-web 폴더의 화면(index.html)을 보여줍니다. 게시판 화면(dist)과 완전히 별개입니다.
+// 이 줄은 맨 아래의 "모든 주소 → 게시판 index.html" 처리보다 먼저 와야 합니다.
+// 먼저 등록된 것이 먼저 실행되기 때문에, 순서가 바뀌면 /todo 도 게시판 화면이 나옵니다.
+app.use('/todo', express.static(path.join(__dirname, '..', 'todo-web')));
+// /todo-api/… 주소들을 등록합니다. 게시판의 /api 와 주소가 달라서 게시판 로그인 검사를 받지 않고,
+// 할 일 전용 비밀번호 + 토큰으로 따로 검사합니다. (자세한 내용은 server/todo.js)
+registerTodoRoutes(app);
 
 // ── 비밀번호 해시 초기화 ───────────────────────────────────
 // 서버 첫 실행 시 '8514!!' 비밀번호를 bcrypt 해시로 변환해서 DB에 저장합니다.
@@ -288,10 +299,12 @@ app.get('/api/posts', (req, res) => {
   //   1순위: 제목에 '완료'가 포함된 글은 1, 아니면 0 → 0이 먼저(위), 1이 나중(아래)에 옴
   //          CASE WHEN ... THEN ... ELSE ... END : SQL의 if/else 문법입니다.
   //          LIKE '%완료%' : 제목 어디에든 '완료'가 들어있으면 true입니다.
-  //   2순위: 같은 그룹 안에서는 작성일 최신순으로 정렬합니다.
-  //   3순위: 날짜도 같으면 id가 큰 것(나중에 쓴 글)이 위로 옵니다.
+  //   2순위: 제목에 '미정'이 포함된 글도 같은 방식으로 맨 뒤로 보냅니다.
+  //          최종 순서는 일반글 → '미정' 글 → '완료' 글 입니다.
+  //   3순위: 같은 그룹 안에서는 작성일 최신순으로 정렬합니다.
+  //   4순위: 날짜도 같으면 id가 큰 것(나중에 쓴 글)이 위로 옵니다.
   // 이 정렬이 LIMIT/OFFSET(페이징)보다 먼저 적용되기 때문에,
-  // '완료' 글은 전체 글 중 맨 마지막 페이지 하단에 위치하게 됩니다.
+  // '완료'·'미정' 글은 전체 글 중 맨 마지막 페이지 하단에 위치하게 됩니다.
   const listSql = `
     SELECT p.id, p.title, p.author, p.created_at, p.updated_at,
            COUNT(DISTINCT c.id) AS comment_count,
@@ -304,6 +317,7 @@ app.get('/api/posts', (req, res) => {
     GROUP BY p.id
     ORDER BY p.is_pinned DESC,
              CASE WHEN p.title LIKE '%완료%' THEN 1 ELSE 0 END ASC,
+             CASE WHEN p.title LIKE '%미정%' THEN 1 ELSE 0 END ASC,
              p.created_at DESC,
              p.id DESC
     LIMIT ? OFFSET ?
@@ -603,6 +617,10 @@ if (fs.existsSync(distDir)) {
 }
 
 // Use plain HTTP again so every office laptop can connect without installing certificates.
-app.listen(PORT, HOST, () => {
+// app.listen() 은 켜진 HTTP 서버 객체를 돌려줍니다.
+// 할 일 앱의 실시간 알림(WebSocket)을 같은 3000번 포트에서 받으려고 이 객체를 변수 server 에 담아 넘겨줍니다.
+const server = app.listen(PORT, HOST, () => {
   console.log(`게시판 서버 실행 중 → http://${DISPLAY_HOST}:${PORT}`);
+  console.log(`할 일 앱       → http://${DISPLAY_HOST}:${PORT}/todo`);
 });
+attachTodoWebSocket(server);

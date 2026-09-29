@@ -1,0 +1,218 @@
+/*
+  CSS 주석 문법: 슬래시+별표 와 별표+슬래시 사이의 글은 적용되지 않는 설명입니다.
+
+  style.css : [MVVM - View] 할 일 화면의 모양(색, 크기, 배치)입니다.
+  안드로이드의 styles.xml / colors.xml / dimens.xml 을 한 파일에 모은 것과 비슷합니다.
+
+  :root 의 --이름 : CSS 변수입니다. 여러 곳에서 같은 색을 쓰려고 한 번만 정의합니다. (colors.xml 과 같은 역할)
+  var(--이름) : 정의해 둔 변수 값을 가져다 씁니다.
+*/
+:root {
+  --bg: #F3F5F7;
+  --surface: #FFFFFF;
+  --ink: #17202A;
+  --muted: #5B6673;
+  --line: #DDE3EA;
+  --line-strong: #C5CDD6;
+  --accent: #2F5BD3;
+  --accent-soft: #E3EAFB;
+  --danger: #B23A2E;
+  --sun: #C23B32;
+  --sat: #3558B8;
+  --ok: #1E8E5A;
+  color-scheme: light;
+}
+
+/* * : 모든 요소. box-sizing: border-box → 너비에 테두리와 안쪽 여백을 포함해서 계산합니다. */
+* { box-sizing: border-box; }
+
+/* hidden 속성이 있는 요소는 CSS 에서 display 를 지정했더라도 반드시 숨깁니다. */
+[hidden] { display: none !important; }
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: #E6EAEE;
+  color: var(--ink);
+  font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  font-size: 15px;
+  -webkit-tap-highlight-color: transparent;   /* 폰에서 버튼을 누를 때 생기는 파란 반짝임을 없앱니다 */
+}
+button, textarea, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { opacity: .4; cursor: default; }
+/* 키보드(Tab)로 이동했을 때 어느 버튼에 있는지 보이게 테두리를 그립니다. */
+button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid #E09A00; outline-offset: 2px; }
+
+/* ── 전체 틀 ──
+   폰에서는 화면 전체, PC 에서는 가운데 480px 너비로 보여줍니다.
+   100dvh : 폰 주소창 높이를 뺀 실제 보이는 화면 높이입니다. (지원하지 않는 브라우저는 앞 줄의 100vh 사용) */
+.app {
+  position: relative;
+  max-width: 480px;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0 auto;
+  background: var(--bg);
+  overflow: hidden;
+}
+@media (min-width: 520px) {
+  /* @media : 화면 너비가 520px 이상(PC)일 때만 적용되는 모양입니다. (layout-w600dp 폴더와 비슷한 개념) */
+  .app { border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+}
+
+/* ── 로그인 화면 ── */
+.login { height: 100%; display: grid; place-items: center; padding: 24px 16px; }
+.login-card {
+  width: 100%; max-width: 360px;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 28px 24px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 18px;
+}
+.login-card h1 { margin: 0; font-size: 24px; }
+.login-desc { margin: 0 0 8px; color: var(--muted); }
+.login-card label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.login-card input {
+  height: 48px; padding: 0 14px;
+  border: 1.5px solid var(--line-strong); border-radius: 12px; background: #F8FAFC;
+}
+.login-card input:focus { outline: none; border-color: var(--accent); }
+.login-error { margin: 0; color: var(--danger); font-size: 14px; }
+
+/* ── 메인 화면: 위(달력) / 가운데(목록, 스크롤) / 아래(추가 버튼) 세로 배치 ──
+   display: flex + flex-direction: column : 자식들을 위에서 아래로 쌓습니다. (Compose 의 Column) */
+.main { height: 100%; display: flex; flex-direction: column; }
+
+/* ── 달력 ── */
+.cal { flex-shrink: 0; background: var(--surface); border-bottom: 1px solid var(--line); padding: 10px 16px 12px; display: flex; flex-direction: column; gap: 8px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; min-height: 28px; }
+.conn { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+/* ::before : 글자 앞에 작은 점을 그립니다. 연결 상태마다 점 색이 다릅니다. */
+.conn::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
+.conn.online::before { background: var(--ok); }
+.conn.connecting::before { background: #E09A00; }
+.conn.offline { color: var(--danger); }
+.conn.offline::before { background: var(--danger); }
+.link-btn { border: 0; background: none; color: var(--muted); font-size: 13px; padding: 6px 4px; text-decoration: underline; }
+
+.month-nav { display: flex; align-items: center; gap: 4px; }
+.month-title { flex: 1; margin: 0; text-align: center; font-size: 21px; font-weight: 700; }
+.icon-btn {
+  width: 44px; height: 44px; flex-shrink: 0;
+  border: 0; border-radius: 12px; background: transparent;
+  display: grid; place-items: center; color: #3E4955;
+}
+.icon-btn:hover { background: #EEF1F5; }
+.icon-btn.del { color: var(--danger); }
+.today-btn { height: 36px; padding: 0 12px; margin-left: 4px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); font-size: 13px; font-weight: 600; }
+
+/* 요일 줄과 날짜 칸 : 7칸 격자 (grid-template-columns: repeat(7, …)) */
+.weekdays, .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; }
+.weekdays { font-size: 12px; font-weight: 600; color: var(--muted); }
+.weekdays .sun { color: var(--sun); }
+.weekdays .sat { color: var(--sat); }
+.cal-grid { row-gap: 2px; }
+.cell-empty { height: 46px; }
+.day { height: 46px; padding: 0; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+.day .num { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; font-weight: 500; }
+.day.sun .num { color: var(--sun); }
+.day.sat .num { color: var(--sat); }
+.day:hover .num { background: #EEF1F5; }
+.day.today .num { border: 1.5px solid var(--accent); color: var(--accent); font-weight: 700; }
+.day.sel .num { background: var(--accent); color: #FFFFFF; font-weight: 700; }
+.day .dot { width: 5px; height: 5px; border-radius: 50%; }
+.day .dot.on { background: var(--accent); }
+
+/* ── 이번 달 목록 (남은 공간을 채우고, 넘치면 스크롤) ──
+   flex: 1 : 남은 세로 공간을 모두 차지합니다. (Compose 의 Modifier.weight(1f))
+   min-height: 0 : 이게 없으면 내용이 많을 때 스크롤되지 않고 화면 밖으로 늘어납니다. */
+.month-list { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 16px 24px; display: flex; flex-direction: column; gap: 14px; }
+.empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 36px 16px; text-align: center; color: var(--muted); border: 1.5px dashed var(--line-strong); border-radius: 14px; }
+.empty strong { color: var(--ink); font-size: 16px; }
+
+.group { display: flex; flex-direction: column; gap: 6px; }
+.group-head { min-height: 36px; padding: 0 4px; border: 0; background: transparent; display: flex; align-items: center; gap: 8px; text-align: left; }
+.group-day { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.group-day.sun { color: var(--sun); }
+.group-day.sel { color: var(--accent); }
+.badge { font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 999px; }
+.group-line { flex: 1; height: 1px; background: var(--line); }
+.group-count { font-size: 12px; color: var(--muted); }
+
+/* ── 할 일 한 줄 ── */
+.item { display: flex; align-items: center; gap: 2px; padding: 2px 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.item.editing { background: var(--accent-soft); border: 1.5px solid var(--accent); }
+.check { width: 44px; height: 44px; flex-shrink: 0; border: 0; background: transparent; display: grid; place-items: center; }
+.check .box { width: 22px; height: 22px; border-radius: 7px; border: 2px solid #8A96A3; background: var(--surface); display: grid; place-items: center; color: #FFFFFF; }
+.check.done .box { border-color: var(--accent); background: var(--accent); }
+.item-text {
+  flex: 1; min-width: 0; min-height: 44px; padding: 6px 4px;
+  border: 0; background: transparent; text-align: left;
+  font-size: 16px; line-height: 1.45;
+  white-space: pre-wrap; word-break: break-word;   /* 줄바꿈을 그대로 보여주고, 긴 단어는 칸 안에서 줄바꿈 */
+}
+.item-text.done { color: #7A8591; text-decoration: line-through; }
+
+/* ── 하단 고정 추가 버튼 영역 ──
+   목록 위에 떠 있지 않고 별도 영역이라, 목록을 가리지 않습니다.
+   env(safe-area-inset-bottom) : 아이폰 하단 홈 막대 높이만큼 여백을 더합니다. */
+.bottom-bar { flex-shrink: 0; display: flex; justify-content: center; padding: 12px 16px calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--bg); border-top: 1px solid var(--line); }
+.add-pill {
+  width: 260px; max-width: 100%; height: 56px; padding: 0 16px 0 24px;
+  border: 1px solid #E3E8EE; border-radius: 999px; background: var(--surface);
+  display: flex; align-items: center; gap: 12px;
+  box-shadow: 0 10px 28px -10px rgba(15, 20, 28, .35);
+}
+.add-pill span { flex: 1; text-align: left; font-size: 16px; color: var(--muted); }
+
+/* ── 되돌리기 알림, 오류 안내 ── */
+.snack, .toast {
+  position: absolute; left: 16px; right: 16px; z-index: 30;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 6px 6px 16px; min-height: 48px;
+  color: #FFFFFF; border-radius: 12px; font-size: 14px;
+  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .5);
+}
+.snack { bottom: calc(104px + env(safe-area-inset-bottom, 0px)); background: var(--ink); }
+.snack.top { top: 16px; bottom: auto; }
+.snack-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.snack-btn { height: 40px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: #A9C0FF; font-weight: 700; }
+.toast { top: 16px; background: var(--danger); padding: 12px 16px; }
+
+/* ── 날짜 팝업 (바텀시트) ── */
+.sheet-wrap { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; justify-content: flex-end; }
+.sheet-backdrop { position: absolute; inset: 0; border: 0; padding: 0; background: rgba(15, 20, 28, .42); cursor: default; }
+.sheet {
+  position: relative; max-height: 88%;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 12px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface); border-radius: 22px 22px 0 0;
+  box-shadow: 0 -8px 30px -12px rgba(0, 0, 0, .35);
+  animation: sheet-up .2s ease-out;
+}
+/* @keyframes : 애니메이션 정의. 팝업이 아래에서 위로 올라오는 움직임입니다. */
+@keyframes sheet-up { from { transform: translateY(24px); opacity: .6; } }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+.handle { align-self: center; width: 40px; height: 4px; border-radius: 4px; background: var(--line-strong); }
+.sheet-head { display: flex; align-items: flex-start; gap: 8px; }
+.sheet-titles { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.sheet-date { font-size: 13px; font-weight: 600; color: var(--accent); }
+.sheet-count { margin: 0; font-size: 20px; font-weight: 700; }
+.sheet-head .icon-btn { margin: -6px -10px 0 0; }
+.sheet-list { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.sheet-empty { padding: 18px 12px; text-align: center; font-size: 14px; color: var(--muted); background: var(--bg); border-radius: 12px; }
+.sheet-input { flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.input-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.input-label.editing { color: var(--accent); }
+#memo {
+  height: 88px; padding: 12px 14px; resize: none;
+  border: 1.5px solid var(--line-strong); border-radius: 12px; background: #F8FAFC;
+  font-size: 16px; line-height: 1.55;   /* 16px 이상이어야 아이폰에서 입력할 때 화면이 확대되지 않습니다 */
+}
+#memo:focus { outline: none; border-color: var(--accent); }
+.sheet-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ── 공통 버튼 ── */
+.btn-primary { height: 48px; padding: 0 22px; border: 0; border-radius: 12px; background: var(--accent); color: #FFFFFF; font-size: 15px; font-weight: 700; }
+.btn-secondary { height: 48px; padding: 0 18px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); font-size: 15px; font-weight: 600; }
+.btn-block { width: 100%; margin-top: 8px; }

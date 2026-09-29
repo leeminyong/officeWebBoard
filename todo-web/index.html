@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!--
+  HTML 주석 문법: <!- - 와 - -> 사이의 글은 화면에 보이지 않는 설명입니다.
+
+  index.html : [MVVM - View] 할 일 웹 화면의 뼈대(레이아웃)입니다. 안드로이드의 XML 레이아웃에 해당합니다.
+  접속 주소 : /todo  (server/server.js 에서 이 폴더를 /todo 주소에 연결)
+
+  바뀌는 부분(달력 칸, 목록 등)은 비워 두고, js/app.js 가 state 를 보고 채워 넣습니다.
+  data-act="…" : 버튼마다 붙인 "동작 이름"입니다. app.js 가 클릭된 버튼의 data-act 를 보고 할 일을 정합니다.
+  hidden : 이 속성이 있으면 화면에 보이지 않습니다. (View.GONE 과 같음)
+-->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <!-- 폰 화면 너비에 맞춰 보이게 합니다. viewport-fit=cover : 아이폰 노치 영역까지 화면을 채웁니다. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#FFFFFF">
+  <title>할 일</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app" class="app">
+
+  <!-- ── 로그인 화면 ── -->
+  <section id="loginView" class="login" hidden>
+    <form id="loginForm" class="login-card">
+      <h1>할 일</h1>
+      <p class="login-desc">할 일 전용 비밀번호를 입력하세요.</p>
+      <label for="loginPw">비밀번호</label>
+      <input id="loginPw" name="password" type="password" autocomplete="current-password" required>
+      <p id="loginError" class="login-error" hidden></p>
+      <button id="loginBtn" type="submit" class="btn-primary btn-block">로그인</button>
+    </form>
+  </section>
+
+  <!-- ── 메인 화면 ── -->
+  <section id="mainView" class="main" hidden>
+
+    <!-- 달력 영역 -->
+    <header class="cal">
+      <div class="topbar">
+        <span id="connStatus" class="conn" aria-live="polite"></span>
+        <button type="button" class="link-btn" data-act="logout">로그아웃</button>
+      </div>
+      <div class="month-nav">
+        <button type="button" class="icon-btn" data-act="prev" aria-label="이전 달">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <h1 id="monthTitle" class="month-title"></h1>
+        <button type="button" class="icon-btn" data-act="next" aria-label="다음 달">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <button type="button" class="today-btn" data-act="today">오늘</button>
+      </div>
+      <div class="weekdays">
+        <span class="sun">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="sat">토</span>
+      </div>
+      <!-- 날짜 칸들은 app.js 의 renderCalendar() 가 채웁니다 -->
+      <div id="calGrid" class="cal-grid"></div>
+    </header>
+
+    <!-- 이번 달 할 일 목록 (날짜별). app.js 의 renderMonthList() 가 채웁니다 -->
+    <main id="monthList" class="month-list"></main>
+
+    <!-- 하단 고정 "○월 ○일에 추가 +" 버튼 -->
+    <footer class="bottom-bar">
+      <button type="button" id="addPill" class="add-pill" data-act="openSel">
+        <span id="pillText"></span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg>
+      </button>
+    </footer>
+
+    <!-- 삭제 후 "되돌리기" 알림 -->
+    <div id="snack" class="snack" hidden>
+      <span id="snackText" class="snack-text"></span>
+      <button type="button" class="snack-btn" data-act="undo">되돌리기</button>
+    </div>
+
+    <!-- 오류 안내 -->
+    <div id="toast" class="toast" role="alert" hidden></div>
+
+    <!-- 날짜 팝업 (바텀시트) -->
+    <div id="sheet" class="sheet-wrap" hidden>
+      <!-- 팝업 바깥 어두운 부분. 누르면 팝업이 닫힙니다 -->
+      <button type="button" class="sheet-backdrop" data-act="closeSheet" aria-label="팝업 닫기"></button>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetCount">
+        <span class="handle"></span>
+        <div class="sheet-head">
+          <div class="sheet-titles">
+            <span id="sheetDate" class="sheet-date"></span>
+            <h2 id="sheetCount" class="sheet-count"></h2>
+          </div>
+          <button type="button" class="icon-btn" data-act="closeSheet" aria-label="팝업 닫기">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+
+        <!-- 그날 할 일 목록. app.js 의 renderSheet() 가 채웁니다 -->
+        <div id="sheetList" class="sheet-list"></div>
+
+        <!-- 입력칸은 다시 그리지 않고 계속 같은 요소를 씁니다. (한글 입력 중에 글자가 끊기지 않게) -->
+        <div class="sheet-input">
+          <label id="inputLabel" for="memo" class="input-label"></label>
+          <textarea id="memo" rows="3" maxlength="500" placeholder="예: 은행 가서 통장 정리하기"></textarea>
+          <div class="sheet-actions">
+            <button type="button" id="cancelEditBtn" class="btn-secondary" data-act="cancelEdit" hidden>편집 취소</button>
+            <button type="button" id="saveBtn" class="btn-primary" data-act="save"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- type="module" : import / export 문법을 쓸 수 있는 방식으로 스크립트를 불러옵니다. -->
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

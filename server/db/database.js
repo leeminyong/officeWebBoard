@@ -111,4 +111,35 @@ if (!maintenanceDone) {
   db.exec("UPDATE posts SET board = 'maintenance-done' WHERE board = 'maintenance' AND title LIKE '%완료%'");
 }
 
+// ── 할 일(Todo) 앱용 테이블 ─────────────────────────────────
+// 게시판과 별도로 동작하는 개인용 할 일 목록(웹 /todo 화면 + 안드로이드 앱)의 데이터입니다.
+// db.exec() : SQL 문장을 그대로 실행합니다. 여러 문장을 한 번에 실행할 수 있습니다.
+// CREATE TABLE IF NOT EXISTS : 테이블이 없을 때만 새로 만듭니다. 서버를 재시작해도 기존 데이터는 그대로입니다.
+// SQL 주석 문법: -- 뒤의 글은 SQL 실행에 영향을 주지 않는 설명입니다.
+db.exec(`
+  -- todos : 할 일 한 건이 한 줄(row)로 저장됩니다.
+  --   안드로이드의 Room @Entity data class Todo(id, date, text, done) 와 같은 구조입니다.
+  CREATE TABLE IF NOT EXISTS todos (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,         -- 자동으로 1, 2, 3... 증가하는 고유 번호
+    date       TEXT    NOT NULL,                          -- 할 일 날짜 'YYYY-MM-DD' (예: '2026-09-21')
+    text       TEXT    NOT NULL,                          -- 할 일 내용
+    done       INTEGER NOT NULL DEFAULT 0,                -- 완료 여부. SQLite에는 boolean이 없어서 0(미완료)/1(완료)로 저장
+    created_at TEXT DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+  );
+
+  -- 인덱스 : 특정 컬럼으로 빠르게 찾을 수 있게 만드는 색인입니다.
+  -- 할 일은 항상 "특정 달의 목록"으로 조회하므로 date 컬럼에 인덱스를 둡니다.
+  CREATE INDEX IF NOT EXISTS idx_todos_date ON todos(date);
+
+  -- todo_tokens : 할 일 로그인에 성공한 기기(브라우저, 앱)에 발급한 토큰 목록입니다.
+  --   토큰 = 로그인 성공 시 서버가 만들어 주는 긴 무작위 문자열입니다.
+  --   기기는 이 토큰을 저장해 두고 요청마다 함께 보내서 "로그인한 기기"임을 증명합니다.
+  --   게시판 로그인(세션, 8시간 만료)과 달리 만료되지 않아서, 앱에서 매번 다시 로그인할 필요가 없습니다.
+  CREATE TABLE IF NOT EXISTS todo_tokens (
+    token      TEXT PRIMARY KEY,
+    created_at TEXT DEFAULT (datetime('now', 'localtime'))
+  );
+`);
+
 module.exports = db;
