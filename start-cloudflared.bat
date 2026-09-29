@@ -15,7 +15,7 @@ if %errorlevel% neq 0 (
 
 echo Server ready! Starting Cloudflared tunnel...
 echo.
-cloudflare\cloudflared-windows-amd64.exe tunnel --url http://localhost:3000
+cloudflared-windows-amd64.exe tunnel --url http://localhost:3000
 
 echo.
 echo Tunnel closed. Press any key to exit.

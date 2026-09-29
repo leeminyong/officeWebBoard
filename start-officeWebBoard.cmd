@@ -1,8 +1,7 @@
 @echo off
 setlocal
 
-rem scripts\ 폴더 기준으로 한 단계 위(프로젝트 루트)로 이동합니다.
-cd /d "%~dp0.."
+cd /d "%~dp0"
 
 set "NODE_EXE=C:\Users\USER\AppData\Local\Programs\nodejs\node.exe"
 if not exist "%NODE_EXE%" set "NODE_EXE=node"
