@@ -77,6 +77,25 @@ a { color: inherit; text-decoration: none; }
   border-right: 1px solid #dfe3ea;
   box-shadow: 1px 0 4px rgba(0,0,0,.04);
   z-index: 10;
+  /* transition : 값이 바뀔 때 한 번에 휙 바뀌지 않고 0.25초 동안 서서히 바뀌게 합니다. */
+  /* transform(위치 이동)이 서서히 바뀌어서 메뉴가 왼쪽으로 스르륵 밀려나고, 다시 스르륵 나옵니다. */
+  /* visibility 도 함께 적어서, 숨길 때는 밀려나는 움직임이 끝난 뒤에 완전히 숨겨집니다. */
+  transition: transform .25s ease, visibility .25s;
+}
+
+/* ── 왼쪽 메뉴 숨김 상태 ── */
+/* App.vue 에서 글보기 화면이거나 ☰ 버튼으로 숨겼을 때 side-menu-hidden 이름표가 붙습니다. */
+/* translateX(-100%) : 메뉴를 자기 너비(220px)만큼 왼쪽으로 옮겨 화면 밖으로 밀어냅니다. */
+/* visibility: hidden : 화면 밖에 있는 메뉴 링크가 Tab 키로 선택되지 않게 완전히 숨깁니다. */
+.side-menu.side-menu-hidden {
+  transform: translateX(-100%);
+  visibility: hidden;
+}
+
+/* ☰ 메뉴 버튼 : theme-btn 모양을 그대로 쓰고, 아이콘 글자만 조금 크게 합니다. */
+.menu-toggle-btn {
+  font-size: 1rem;
+  padding: 2px 10px;
 }
 .side-menu-item {
   display: flex;
@@ -321,6 +340,16 @@ a { color: inherit; text-decoration: none; }
   /* max-width를 제거해서 너비 제한 없이 오른쪽 끝까지 늘어나도록 했습니다. */
   margin: 32px 0 32px 220px;
   padding: 0;
+  /* 메뉴가 숨겨지거나 나타날 때 본문도 메뉴와 같은 속도(0.25초)로 넓어지고 좁아지게 합니다. */
+  transition: margin-left .25s ease;
+}
+
+/* 메뉴가 숨겨졌을 때 본문 : 메뉴 자리(왼쪽 220px)까지 넓게 씁니다. */
+/* ~ 기호 : "같은 부모 안에서 뒤에 오는 형제 요소"를 고르는 CSS 문법입니다. */
+/*   App.vue 에서 메뉴(aside) 다음에 본문(.container)이 오므로, "숨겨진 메뉴 뒤에 오는 본문"을 뜻합니다. */
+/* 아래쪽 @media (max-width: 1120px) 의 margin-left: 220px 보다 이 규칙이 더 구체적(이름표 2개)이라 이 값이 우선 적용됩니다. */
+.side-menu-hidden ~ .container {
+  margin-left: 0;
 }
 
 /* ── 카드 ── */
@@ -366,6 +395,22 @@ a { color: inherit; text-decoration: none; }
 .btn-danger   { background: #e74c3c; color: #fff; }
 .btn-secondary{ background: #ecf0f1; color: #555; }
 .btn-sm { padding: 5px 12px; font-size: .82rem; }
+
+/* CSS 주석 문법: 이 안의 글은 화면에 영향을 주지 않는 설명입니다. */
+/* ── 게시글 상세 화면의 '이동' 드롭다운 ── */
+/* select 요소는 브라우저 기본 모양(테두리, 글꼴)이 버튼과 다르기 때문에 버튼처럼 보이게 맞춥니다. */
+/* appearance: none → 브라우저가 기본으로 그리는 화살표/테두리를 없앱니다. ("이동 ▾" 글자에 화살표를 직접 넣었습니다) */
+/* font-family: inherit → 부모 요소의 글꼴을 그대로 씁니다. (select 는 기본 글꼴이 따로 있어서 필요) */
+.move-select {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  text-align: center;
+}
+/* 드롭다운을 펼쳤을 때 나오는 항목(option)은 배경/글자색을 명확히 지정합니다. */
+/* 지정하지 않으면 다크 모드에서 흰 배경에 흰 글자처럼 보일 수 있습니다. */
+.move-select option { background: #fff; color: #222; }
+[data-theme="dark"] .move-select option { background: #2c2e33; color: #c1c2c5; }
 
 /* ── 게시글 테이블 ── */
 /* table-layout: fixed → 열 너비를 th에 지정한 값으로 고정합니다. */
@@ -853,6 +898,11 @@ textarea.form-control { resize: vertical; min-height: 200px; }
     border-right: none;
     border-bottom: 1px solid #dfe3ea;
     box-shadow: none;
+  }
+  /* 좁은 화면에서는 메뉴가 위쪽 가로 탭이라, 왼쪽으로 밀어내면 그 자리에 빈 공간이 남습니다. */
+  /* 그래서 밀어내지 않고 display: none 으로 아예 없애서, 본문이 바로 위로 올라오게 합니다. */
+  .side-menu.side-menu-hidden {
+    display: none;
   }
   /* 각 탭 항목 래퍼가 가로로 눌려서 줄어들지 않도록 고정합니다. */
   /* flex: 0 0 auto → "늘어나지도 말고, 줄어들지도 말고, 내 내용 크기 그대로 유지해라"는 뜻입니다. */

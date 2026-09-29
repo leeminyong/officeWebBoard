@@ -1,14 +1,22 @@
-import { ref } from 'vue'
+// JavaScript 주석 문법: // 뒤의 글은 코드 실행에 영향을 주지 않는 설명입니다.
+// computed() : 다른 ref 값이 바뀌면 자동으로 다시 계산되는 읽기 전용 값입니다. (안드로이드의 Transformations.map()과 비슷)
+import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { fetchPost, deletePost as apiDeletePost, createComment, updateComment, deleteComment as apiDeleteComment, deletePostFile, deleteCommentFile, togglePin as apiTogglePin, movePost as apiMovePost } from '../api.js'
 import { useToast } from './useToast.js'
 import { boardMeta } from '../board.js'
 import { downloadFromUrl } from '../utils.js'
+// useBoards : 게시판 목록(boards)을 관리하는 ViewModel입니다.
+// '이동' 드롭다운에 보여줄 게시판 목록을 여기서 가져옵니다.
+import { useBoards } from './useBoards.js'
 
 export function usePostDetail() {
   const route = useRoute()
   const router = useRouter()
   const { showToast } = useToast()
+  // boards : 전체 게시판 배열입니다. 예) [{ key: 'project', label: '프로젝트', parent_key: null }, ...]
+  // boardMap : { key: label } 형태의 객체입니다. 부모 게시판 이름을 찾을 때 씁니다.
+  const { boards, boardMap } = useBoards()
 
   const post = ref(null)
   // route.query.board : 현재 URL의 ?board= 값입니다. (예: board_1234567890)
@@ -166,6 +174,49 @@ export function usePostDetail() {
     }
   }
 
+  // moveTargets : '이동' 드롭다운에 보여줄 게시판 목록입니다. (ViewModel 레이어)
+  // 현재 글이 있는 게시판은 이동할 필요가 없으므로 목록에서 뺍니다.
+  // 하위 게시판은 "부모 이름 > 자식 이름" 형태로 보여줘서 어느 메뉴 아래인지 알 수 있게 합니다.
+  // computed() 이므로 boards 나 currentBoard 가 바뀌면 자동으로 다시 계산됩니다.
+  const moveTargets = computed(() =>
+    boards.value
+      // filter() : 조건에 맞는 항목만 남깁니다. b.key !== currentBoard.value → 현재 게시판 제외
+      .filter(b => b.key !== currentBoard.value)
+      // map() : 각 항목을 { key, label } 형태로 바꿉니다.
+      // 삼항연산자(조건 ? A : B) : parent_key 가 있으면 "부모 > 자식", 없으면 이름 그대로
+      .map(b => ({
+        key: b.key,
+        label: b.parent_key ? `${boardMap.value[b.parent_key]} > ${b.label}` : b.label,
+      }))
+  )
+
+  // handleMove : '이동' 드롭다운에서 게시판을 골랐을 때 실행되는 함수입니다. (ViewModel 레이어)
+  // targetBoard : 이동할 게시판 key (예: 'maintenance', 'board_1234567890')
+  // 흐름: 확인창 → 서버에 이동 요청 → 성공 토스트 → 0.8초 뒤 옮긴 게시판의 목록 화면으로 이동
+  // handleComplete 와 같은 구조지만, 목적지가 고정되지 않고 인자로 들어온다는 점이 다릅니다.
+  async function handleMove(targetBoard) {
+    // 드롭다운의 첫 줄("이동 ▾")을 다시 고른 경우 key 가 빈 문자열이므로 아무것도 하지 않습니다.
+    if (!targetBoard) return
+    // find() : 배열에서 조건에 맞는 첫 항목을 찾습니다. 확인창에 게시판 이름을 보여주기 위해 씁니다.
+    // ?. (옵셔널 체이닝) : 앞의 값이 없으면(undefined) 오류 대신 undefined 를 돌려줍니다.
+    const targetLabel = moveTargets.value.find(b => b.key === targetBoard)?.label || targetBoard
+    // confirm() : 확인/취소 버튼이 있는 대화상자를 띄웁니다. 취소를 누르면 false 를 돌려줍니다.
+    if (!confirm(`이 게시글을 '${targetLabel}' 게시판으로 이동하시겠습니까?`)) return
+    const res = await apiMovePost(route.params.id, targetBoard)
+    if (res.ok) {
+      showToast(`'${targetLabel}' 게시판으로 이동되었습니다.`)
+      // setTimeout : 일정 시간(밀리초) 후에 코드를 실행합니다. 토스트 메시지를 잠깐 보여주기 위해 사용합니다.
+      // router.push() : 다른 화면으로 이동합니다. (안드로이드의 startActivity()와 비슷)
+      // 'project' 는 기본 게시판이라 URL 에 ?board= 를 붙이지 않습니다. (goToList 와 같은 규칙)
+      setTimeout(() => {
+        const q = targetBoard !== 'project' ? { board: targetBoard } : {}
+        router.push({ path: '/', query: q })
+      }, 800)
+    } else {
+      showToast('이동 실패', true)
+    }
+  }
+
   function goToEdit() {
     router.push({ path: `/posts/${route.params.id}/edit`, query: { board: currentBoard.value } })
   }
@@ -177,6 +228,8 @@ export function usePostDetail() {
 
   return {
     post, currentBoard, cmtFiles, cmtContent, editingCommentId, editingCommentContent,
+    // moveTargets, handleMove : '이동' 드롭다운에서 쓰는 목록과 함수입니다.
+    moveTargets, handleMove,
     loadPost, handleDeletePost, handleTogglePin, handleComplete, submitComment, startEditComment, cancelEditComment, submitEditComment, handleDeleteComment,
     handleDeletePostFile, handleDeleteCommentFile,
     downloadFile, downloadCommentFile, addCmtFiles, removeCmtFile, goToEdit, goToList,
